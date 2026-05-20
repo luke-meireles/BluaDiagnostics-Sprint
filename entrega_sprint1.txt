@@ -1,0 +1,25 @@
+BluaDiagnostics - Sprint 1
+FIAP - Prompt Engineering e IA
+
+Integrantes:
+- Lucas Gabriel Alvarenga e Meireles - RM 567305
+- Gabriel Augusto da Silva - RM 567057
+- Leonardo Kenji Kubo Barboza - RM 567518
+- Lucas Koiti Uyeno de Souza - RM 568128
+- Lucas Morio Ikeda - RM 567616
+
+Repositorio GitHub:
+https://github.com/luke-meireles/Prototype
+
+Conteudo entregue no repositorio:
+- README.md (visao geral, integrantes, stack, riscos, arquitetura, comparacao de modelos)
+- docs/arquitetura.mermaid e docs/arquitetura.png (fluxograma)
+- prompts/system_prompt.md (PAPEL, ESCOPO, RESTRICOES, FORMATO_DE_SAIDA, ESCALADA_HUMANA)
+- prompts/agente_checkup.md, agente_triagem.md, agente_prescricao.md, agente_safety.md
+- evals/sprint1_eval_set.json (15 casos: happy_path, red_flag, jailbreak, out_of_scope)
+- evals/run_evals.py (runner LLM-as-a-judge)
+- tools/tools_spec.json (5 tools com JSON Schema OpenAI/Anthropic-compatible)
+- notebooks/sprint1_poc.ipynb (PoC executavel no Google Colab)
+- knowledge_base/ (7 documentos PT-BR para o RAG)
+- data/mocks/ (perfis clinicos, agendamentos, interacoes medicamentosas, wearable)
+- src/ (codigo fonte: agentes, RAG, tools, grafo LangGraph, audit log)

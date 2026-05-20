@@ -1,0 +1,41 @@
+# BluaDiagnostics — dependências para Google Colab
+#
+# O Colab (Python 3.11) já traz pré-instalados: numpy, pandas, ipykernel,
+# jupyter, tqdm, requests, etc. Listamos aqui apenas o que NÃO vem por padrão
+# ou cuja versão precisa ser garantida para o projeto funcionar.
+#
+# Instalação típica no Colab (primeira célula do notebook):
+#     %pip install -q -r requirements.txt
+#
+# Em ambiente local, ative um venv com Python 3.11+ e rode:
+#     pip install -r requirements.txt
+
+# --- LLM e SDK Qwen (DashScope OpenAI-compatible) ---
+openai>=1.50.0
+
+# qwen-agent é OPCIONAL — usado apenas na demo "Seção 12" do notebook.
+# Comente esta linha se quiser instalar mais rápido no Colab.
+qwen-agent>=0.0.10
+
+# --- Orquestração multi-agente ---
+langgraph>=0.2.50
+# Único módulo do LangChain efetivamente usado (RecursiveCharacterTextSplitter).
+langchain-text-splitters>=0.3.0
+
+# --- Vector DB e embeddings ---
+chromadb>=0.5.0
+sentence-transformers>=3.0.0
+
+# --- Validação e tipos ---
+pydantic>=2.8.0
+typing-extensions>=4.12.0
+
+# --- Logging estruturado ---
+structlog>=24.4.0
+
+# --- Variáveis de ambiente ---
+# No Colab, preferimos Colab Secrets — python-dotenv só é usado em modo local.
+python-dotenv>=1.0.1
+
+# --- Utilitários ---
+tenacity>=9.0.0
