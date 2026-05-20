@@ -28,7 +28,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 # CONSTANTES
 
 # Modelo fixo — alterado apenas via variável de ambiente
-_MODELO_PADRAO = os.getenv("QWEN_DASHCOPE_MODEL", "qwen-plus")
+_MODELO_PADRAO = os.getenv("QWEN_DASHSCOPE_MODEL", "qwen-plus")
 
 # Base URL do DashScope International
 _BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
@@ -66,10 +66,10 @@ def _obter_cliente() -> OpenAI:
 )
 
 def chat(
-    messages = list[dict],
+    messages: list[dict[str, Any]],
     tools: list[dict] | None = None,
     enable_thinking: bool = False,
-    temperature: int = TEMPERATURA_PADRAO,
+    temperature: float = TEMPERATURA_PADRAO,
     max_tokens: int | None = None,
     modelo: str | None = None
 ) -> dict[str, Any]:

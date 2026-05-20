@@ -15,7 +15,7 @@ Conteudo entregue no repositorio:
 - README.md (visao geral, integrantes, stack, riscos, arquitetura, comparacao de modelos)
 - docs/arquitetura.mermaid e docs/arquitetura.png (fluxograma)
 - prompts/system_prompt.md (PAPEL, ESCOPO, RESTRICOES, FORMATO_DE_SAIDA, ESCALADA_HUMANA)
-- prompts/agente_checkup.md, agente_triagem.md, agente_prescricao.md, agente_safety.md
+- prompts/agente_checkup.md, agente_triagem.md, agente_suporte_clinico.md, agente_safety.md
 - evals/sprint1_eval_set.json (15 casos: happy_path, red_flag, jailbreak, out_of_scope)
 - evals/run_evals.py (runner LLM-as-a-judge)
 - tools/tools_spec.json (5 tools com JSON Schema OpenAI/Anthropic-compatible)
