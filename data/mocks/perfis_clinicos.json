@@ -261,6 +261,148 @@
         "altura_cm": 180,
         "imc": 28.4
       }
+    },
+    {
+      "id": "BENEF-CV-001",
+      "nome": "Helena Pereira Fictícia",
+      "idade": 70,
+      "sexo": "feminino",
+      "plano": "Care Plus Premium",
+      "condicoes_ativas": [
+        {"nome": "Insuficiência cardíaca com FE reduzida (35%)", "cid": "I50.2", "status": "controlada", "desde": "2020-04-12"},
+        {"nome": "Diabetes mellitus tipo 2", "cid": "E11", "status": "em controle", "desde": "2015-07-03"},
+        {"nome": "Doença arterial coronariana (stent em DA)", "cid": "I25.1", "status": "histórico — stent 2021", "desde": "2021-09-18"},
+        {"nome": "Hipertensão arterial sistêmica", "cid": "I10", "status": "controlada", "desde": "2010-02-01"}
+      ],
+      "score_risco_cardiovascular": "alto",
+      "medicacoes_ativas": [
+        {"nome": "Carvedilol", "dose": "25mg", "frequencia": "2x ao dia", "indicacao": "IC com FE reduzida", "inicio": "2020-05-01"},
+        {"nome": "Enalapril", "dose": "20mg", "frequencia": "1x ao dia", "indicacao": "IC e HAS", "inicio": "2020-05-01"},
+        {"nome": "Espironolactona", "dose": "25mg", "frequencia": "1x ao dia", "indicacao": "IC", "inicio": "2020-05-01"},
+        {"nome": "Furosemida", "dose": "40mg", "frequencia": "1x ao dia", "indicacao": "IC — controle volêmico", "inicio": "2020-05-01"},
+        {"nome": "AAS", "dose": "100mg", "frequencia": "1x ao dia", "indicacao": "Prevenção secundária DAC", "inicio": "2021-09-18"},
+        {"nome": "Atorvastatina", "dose": "40mg", "frequencia": "1x ao dia", "indicacao": "Dislipidemia / DAC", "inicio": "2021-09-18"},
+        {"nome": "Metformina", "dose": "850mg", "frequencia": "2x ao dia", "indicacao": "Diabetes mellitus tipo 2", "inicio": "2015-07-03"}
+      ],
+      "alergias": [],
+      "consultas": {
+        "ultima": {
+          "data": "2026-04-08",
+          "especialidade": "Cardiologia",
+          "medico": "Dra. Marina Lopes — CRM 67890/SP",
+          "observacoes": "IC em controle clínico. Ajuste de furosemida para 40mg. Peso estável. Sem ortopneia ou DPN.",
+          "plataforma": "Teleconsulta Blua"
+        },
+        "proxima": {
+          "data": "2026-07-08",
+          "especialidade": "Cardiologia",
+          "status": "agendada"
+        }
+      },
+      "exames_recentes": [
+        {"tipo": "Ecocardiograma transtorácico", "data": "2026-03-15", "resultado": "Fração de ejeção 36%. Disfunção sistólica moderada. Câmaras esquerdas dilatadas.", "laudo": "IC com FE reduzida estável"},
+        {"tipo": "BNP", "data": "2026-03-15", "resultado": "342 pg/mL", "laudo": "Compatível com IC em compensação"}
+      ],
+      "sinais_vitais_ultimo_registro": {
+        "data": "2026-04-08",
+        "pressao_arterial": "118x72 mmHg",
+        "frequencia_cardiaca": "68 bpm",
+        "saturacao_oxigenio": "96%",
+        "peso_kg": 64,
+        "altura_cm": 162,
+        "imc": 24.4
+      }
+    },
+    {
+      "id": "BENEF-CV-002",
+      "nome": "Roberto Costa Fictício",
+      "idade": 53,
+      "sexo": "masculino",
+      "plano": "Care Plus Essencial",
+      "condicoes_ativas": [
+        {"nome": "Fibrilação atrial paroxística (CHA2DS2-VASc 2)", "cid": "I48.0", "status": "em controle", "desde": "2024-11-10"},
+        {"nome": "Hipertensão arterial sistêmica", "cid": "I10", "status": "controlada", "desde": "2018-06-15"}
+      ],
+      "score_risco_cardiovascular": "moderado",
+      "medicacoes_ativas": [
+        {"nome": "Apixabana", "dose": "5mg", "frequencia": "2x ao dia", "indicacao": "Anticoagulação para FA", "inicio": "2024-11-15"},
+        {"nome": "Metoprolol succinato", "dose": "50mg", "frequencia": "1x ao dia", "indicacao": "Controle de FC em FA", "inicio": "2024-11-15"},
+        {"nome": "Losartana", "dose": "100mg", "frequencia": "1x ao dia", "indicacao": "Hipertensão arterial", "inicio": "2018-06-15"}
+      ],
+      "alergias": ["Varfarina (substituída por DOAC após hemorragia gengival)"],
+      "consultas": {
+        "ultima": {
+          "data": "2026-03-22",
+          "especialidade": "Cardiologia",
+          "medico": "Dr. Felipe Andrade — CRM 78901/SP",
+          "observacoes": "Sem novos episódios de FA documentados nos últimos 60 dias. Anticoagulação mantida. PA controlada.",
+          "plataforma": "Teleconsulta Blua"
+        },
+        "proxima": {
+          "data": "2026-09-22",
+          "especialidade": "Cardiologia",
+          "status": "agendada"
+        }
+      },
+      "exames_recentes": [
+        {"tipo": "Holter 24h", "data": "2026-02-10", "resultado": "Ritmo sinusal predominante. Dois episódios de FA paroxística autolimitados (8min e 15min).", "laudo": "FA paroxística — manter anticoagulação"},
+        {"tipo": "Ecocardiograma transtorácico", "data": "2026-01-08", "resultado": "Fração de ejeção 60%. Átrio esquerdo levemente aumentado.", "laudo": "Compatível com FA"}
+      ],
+      "sinais_vitais_ultimo_registro": {
+        "data": "2026-03-22",
+        "pressao_arterial": "128x82 mmHg",
+        "frequencia_cardiaca": "74 bpm",
+        "saturacao_oxigenio": "98%",
+        "peso_kg": 84,
+        "altura_cm": 178,
+        "imc": 26.5
+      }
+    },
+    {
+      "id": "BENEF-CV-003",
+      "nome": "Ana Carolina Lima Fictícia",
+      "idade": 57,
+      "sexo": "feminino",
+      "plano": "Care Plus Premium",
+      "condicoes_ativas": [
+        {"nome": "Angina microvascular", "cid": "I20.8", "status": "diagnóstico recente", "desde": "2026-02-28"},
+        {"nome": "Menopausa (5 anos)", "cid": "N95.1", "status": "estabelecida", "desde": "2021-01-01"},
+        {"nome": "Dislipidemia", "cid": "E78.5", "status": "em controle medicamentoso", "desde": "2019-09-20"}
+      ],
+      "score_risco_cardiovascular": "moderado",
+      "medicacoes_ativas": [
+        {"nome": "Nitrato isossorbida", "dose": "20mg", "frequencia": "2x ao dia", "indicacao": "Angina microvascular", "inicio": "2026-03-01"},
+        {"nome": "Atorvastatina", "dose": "20mg", "frequencia": "1x ao dia", "indicacao": "Dislipidemia / prevenção CV", "inicio": "2019-09-20"},
+        {"nome": "AAS", "dose": "100mg", "frequencia": "1x ao dia", "indicacao": "Prevenção CV", "inicio": "2026-03-01"}
+      ],
+      "alergias": [],
+      "consultas": {
+        "ultima": {
+          "data": "2026-02-28",
+          "especialidade": "Cardiologia",
+          "medico": "Dra. Beatriz Tavares — CRM 89012/SP",
+          "observacoes": "Investigação concluída — angina microvascular. Iniciado nitrato. Cintilografia compatível, holter sem arritmias.",
+          "plataforma": "Teleconsulta Blua"
+        },
+        "proxima": {
+          "data": "2026-05-28",
+          "especialidade": "Cardiologia",
+          "status": "agendada"
+        }
+      },
+      "exames_recentes": [
+        {"tipo": "Cintilografia miocárdica", "data": "2026-02-15", "resultado": "Defeito de perfusão reversível em parede inferior, sem necrose. Compatível com isquemia microvascular.", "laudo": "Compatível com angina microvascular"},
+        {"tipo": "Holter 24h", "data": "2026-02-10", "resultado": "Ritmo sinusal. Sem arritmias significativas.", "laudo": "Sem alterações"}
+      ],
+      "sinais_vitais_ultimo_registro": {
+        "data": "2026-02-28",
+        "pressao_arterial": "126x80 mmHg",
+        "frequencia_cardiaca": "72 bpm",
+        "saturacao_oxigenio": "98%",
+        "peso_kg": 67,
+        "altura_cm": 165,
+        "imc": 24.6
+      }
     }
   ]
 }

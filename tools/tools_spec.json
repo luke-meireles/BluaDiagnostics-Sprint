@@ -353,5 +353,96 @@
         "fonte": "Apple Watch Series 9 — dados simulados para PoC acadêmica"
       }
     }
+  },
+
+  {
+    "name": "estratificar_dor_toracica",
+    "description": "Estratifica risco cardiovascular de dor torácica ou equivalente anginoso. Usa HEART score simplificado (sem ECG/troponina). Inclui ajuste para apresentação atípica em mulheres, diabéticos, idosos e pacientes com IC prévia. Use sempre que houver suspeita cardiovascular, mesmo na ausência de dor torácica clássica.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "caracteristicas_dor": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Lista de descritores da dor. Termos aceitos: opressiva, aperto, peso, queimacao_retroesternal, irradiacao_braco_esquerdo, irradiacao_mandibula, irradiacao_dorso, deflagrada_por_esforco, alivio_repouso, alivio_nitrato, pleuritica, reproduzivel_palpacao, punctada, ventilatorio_dependente, movimentos_dependente, longa_duracao_estavel. Pode ser lista vazia em equivalente anginoso."
+        },
+        "sintomas_associados": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Sintomas que acompanham. Aceitos: sudorese, sudorese_fria, nausea, vomito, dispneia, sincope, pre_sincope, palidez."
+        },
+        "idade": {"type": "integer", "minimum": 0, "maximum": 120},
+        "sexo": {
+          "type": "string",
+          "enum": ["masculino", "feminino", "outro"]
+        },
+        "fatores_risco": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Fatores de risco CV. Aceitos: hipertensao, diabetes, dislipidemia, tabagismo_ativo, tabagismo_recente, dac_previa, iam_previo, avc_previo, doenca_arterial_periferica, drc_estagio_3_ou_mais, obesidade, sedentarismo, iam_familia_precoce."
+        },
+        "grupos_atipicos": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Marcadores de risco para apresentação atípica. Aceitos: mulher, diabetico, idoso_65, neuropata, ic_previa."
+        },
+        "duracao_minutos": {"type": "integer"},
+        "em_esforco": {"type": "boolean", "default": false}
+      },
+      "required": ["caracteristicas_dor", "sintomas_associados", "idade", "sexo", "fatores_risco"]
+    },
+    "mock_responses": {
+      "tipico_alto_risco": {
+        "nivel": "alto",
+        "manchester": "vermelho",
+        "score": 7,
+        "componentes": {
+          "H_historia_clinica": 2,
+          "A_idade": 1,
+          "R_fatores_risco": 2,
+          "S_sintomas_associados": 2,
+          "score_base": 7,
+          "ajuste_apresentacao_atipica": 0,
+          "score_ajustado_total": 7
+        },
+        "conduta_recomendada": "encaminhamento imediato para emergência com hemodinâmica — acionar SAMU 192 ou pronto-socorro de referência",
+        "apresentacao_atipica_detectada": false,
+        "disclaimer": "Estratificação de apoio à triagem, sem ECG nem biomarcadores. Não substitui avaliação médica completa."
+      },
+      "atipico_mulher_diabetica_idosa": {
+        "nivel": "moderado",
+        "manchester": "laranja",
+        "score": 5,
+        "componentes": {
+          "H_historia_clinica": 1,
+          "A_idade": 2,
+          "R_fatores_risco": 1,
+          "S_sintomas_associados": 1,
+          "score_base": 4,
+          "ajuste_apresentacao_atipica": 1,
+          "score_ajustado_total": 5
+        },
+        "conduta_recomendada": "avaliação presencial em até 4-6h em pronto-atendimento ou unidade básica com ECG e troponina disponíveis",
+        "apresentacao_atipica_detectada": true,
+        "disclaimer": "Estratificação de apoio à triagem, sem ECG nem biomarcadores. Não substitui avaliação médica completa."
+      },
+      "baixo_risco_jovem": {
+        "nivel": "baixo",
+        "manchester": "verde",
+        "score": 0,
+        "componentes": {
+          "H_historia_clinica": 0,
+          "A_idade": 0,
+          "R_fatores_risco": 0,
+          "S_sintomas_associados": 0,
+          "score_base": 0,
+          "ajuste_apresentacao_atipica": 0,
+          "score_ajustado_total": 0
+        },
+        "conduta_recomendada": "teleconsulta com cardiologia ou clínica geral em 24-48h, com orientações claras de retorno em caso de piora",
+        "apresentacao_atipica_detectada": false,
+        "disclaimer": "Estratificação de apoio à triagem, sem ECG nem biomarcadores. Não substitui avaliação médica completa."
+      }
+    }
   }
 ]

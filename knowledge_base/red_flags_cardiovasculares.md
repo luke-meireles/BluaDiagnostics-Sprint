@@ -150,7 +150,143 @@ Conduta: teleconsulta urgente ou pronto-socorro conforme gravidade.
 
 ---
 
-## 7. O que NÃO é Red Flag Cardiovascular
+## 7. Equivalentes anginosos — SCA atípica
+
+Até 30% das Síndromes Coronarianas Agudas (SCA) em grupos de risco
+se apresentam **sem dor torácica clássica**. O agente deve manter
+suspeita elevada em **mulher pós-menopausa**, **diabético**, **idoso
+≥65 anos**, **pós-AVC** ou **paciente com IC prévia** quando
+identificar **qualquer um** dos sinais:
+
+- Dispneia isolada de início recente
+- Dor epigástrica + náusea + sudorese (especialmente em diabéticos)
+- Fadiga severa nova + intolerância a esforço habitual
+- Dor em mandíbula isolada
+- Dor em dorso interescapular ou ombro esquerdo isolada
+- Síncope sem pródromos em idoso com FRCV
+- Sensação de "morte iminente" sem causa evidente
+- Confusão mental aguda em ≥75 anos com FRCV
+
+Conduta: subir um nível Manchester em relação ao raciocínio padrão,
+acionar `estratificar_dor_toracica` mesmo sem dor torácica clássica,
+e perguntar explicitamente sobre sintomas torácicos sutis. Detalhes
+em `cardiologia_apresentacoes_atipicas.md`.
+
+---
+
+## 8. Red Flags de Dissecção Aórtica
+
+A dissecção aórtica é uma das urgências cardiovasculares de mais
+alta letalidade — 1% ao 2% por hora nas primeiras 48h sem
+tratamento. O quadro clássico é facilmente confundível com IAM,
+mas o manejo (cirúrgico/endovascular) é distinto e o tempo crítico.
+
+### Sinais de alerta
+- Dor torácica de início súbito descrita como "lancinante",
+  "rasgando", "estraçalhando"
+- Dor migratória: começa no peito, migra para dorso/abdome
+- Assimetria de pulsos entre os braços ou diferença de pressão
+  arterial entre membros superiores (> 20 mmHg)
+- Em paciente com hipertensão mal controlada, síndrome de Marfan,
+  gestante de 3º trimestre, ou uso de cocaína/anfetamina
+
+### Conduta imediata
+SAMU 192. Não administrar AAS (pode piorar sangramento se dissecção).
+Mencionar a possibilidade de dissecção ao SAMU sem afirmar diagnóstico.
+
+---
+
+## 9. Red Flags de Embolia Pulmonar
+
+EP maciça pode levar à morte súbita por colapso hemodinâmico. A
+suspeita deve ser elevada em paciente com fator de risco trombogênico
+e dispneia súbita.
+
+### Sinais de alerta
+- Dispneia súbita inexplicada, especialmente em repouso
+- Dor pleurítica (piora com inspiração profunda)
+- Taquicardia (FC >100 bpm) + hipoxemia
+- Hemoptise (em casos avançados)
+- Sinais de TVP (edema unilateral de MMII, dor à palpação da
+  panturrilha)
+
+### Fatores de risco trombogênico
+Imobilização prolongada (cirurgia, viagem >6h, internação),
+neoplasia ativa, gravidez/puerpério, anticoncepcional combinado +
+tabagismo, trombofilia hereditária, TVP/EP prévia, IC, obesidade.
+
+### Conduta imediata
+SAMU 192 ou pronto-socorro com tomografia disponível.
+
+---
+
+## 10. Red Flags de Tamponamento Cardíaco
+
+O tamponamento ocorre quando o pericárdio se enche de líquido
+(sangue, exsudato) suficiente para impedir o enchimento ventricular.
+É uma emergência mecânica que requer drenagem imediata.
+
+### Tríade de Beck (apenas 1/3 dos casos completa)
+- Hipotensão
+- Turgência jugular (estase venosa jugular)
+- Abafamento de bulhas cardíacas
+
+### Outros sinais
+- Dispneia progressiva e ortopneia
+- Taquicardia compensatória
+- Pulso paradoxal (queda da PAS >10 mmHg na inspiração)
+
+### Contextos de risco
+Paciente com neoplasia (linfoma, mama, pulmão), IRC dialítica,
+pós-cirurgia cardíaca, trauma torácico fechado/penetrante,
+pericardite viral, uso de anticoagulante.
+
+### Conduta imediata
+SAMU 192. Pericardiocentese em ambiente hospitalar.
+
+---
+
+## 11. Red Flags de Miocardite Aguda
+
+A miocardite frequentemente é subdiagnosticada — pode se apresentar
+desde dor torácica leve em jovem até choque cardiogênico fulminante.
+
+### Sinais de alerta
+- Dor torácica + febre + dispneia em paciente jovem (<40a)
+- Antecedente de quadro viral nos últimos 7-30 dias (gripe,
+  COVID, gastroenterite)
+- Palpitações novas + fadiga progressiva
+- Sinais de IC nova em paciente previamente hígido
+- Arritmias ventriculares novas
+
+### Conduta
+Pronto-socorro com cardiologia disponível. ECG + troponina + BNP
++ ecocardiograma são fundamentais.
+
+---
+
+## 12. Síncope cardiogênica — expansão do tópico
+
+A síncope merece estratificação cardiológica cuidadosa porque o
+mecanismo cardiogênico (arritmia, valvopatia, isquemia) tem
+letalidade significativamente maior que o vasovagal benigno.
+
+### Sinais de alta probabilidade cardiogênica
+- Síncope sem pródromos (sem aviso prévio)
+- Síncope em esforço ou na posição supina
+- Acompanhada de dor torácica, dispneia ou palpitações
+- Em idoso ≥75 anos com FRCV → investigação cardiológica obrigatória
+- Síncope recorrente em <40a sem pródromos → investigar Brugada,
+  QT longo, miocardiopatia hipertrófica (história familiar de morte
+  súbita aumenta peso)
+
+### Conduta
+Emergência se em esforço ou supina ou com sintomas associados.
+Cardiologia em 48h se ausência de pródromos sem outros sinais.
+
+---
+
+## 13. O que NÃO é Red Flag Cardiovascular
 
 Para evitar superestimação de urgência e desgaste do beneficiário,
 o agente deve saber distinguir sintomas que não configuram red flag

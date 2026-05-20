@@ -26,6 +26,18 @@ _RED_FLAGS = {
     "cefaleia subita", "pior dor de cabeca da vida", "ideacao suicida",
     "tentativa de suicidio", "sangramento ativo", "sangramento abundante",
     "convulsao", "dor abdominal severa",
+    # Cardiovascular — apresentações típicas
+    "dor opressiva retroesternal", "dor irradiando braco esquerdo",
+    "dor irradiando mandibula", "sincope em esforco",
+    "sincope sem pedrodromos",
+    # Cardiovascular — emergências específicas
+    "dor toracica lancinante", "dor migratoria peito dorso",
+    "assimetria de pulsos", "turgencia jugular",
+    "pa sistolica acima 180 com cefaleia",
+    "pa sistolica acima 180 com alteracao visual",
+    # Cardiovascular — equivalentes anginosos em grupos de risco
+    "dispneia subita em diabetico", "dispneia subita em idoso",
+    "epigastralgia com sudorese em diabetico",
 }
 
 _ALTO_DESCONFORTO = {

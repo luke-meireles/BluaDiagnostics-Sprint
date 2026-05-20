@@ -150,6 +150,40 @@ O retorno final do agente inclui:
 
 ---
 
+## 10a. Coleta de fatores de risco cardiovascular
+
+<!--
+  Adicionado pelo Patch 2 — Cardiologia.
+  Em todo primeiro contato com paciente adulto (≥30 anos), tente levantar
+  discretamente — sem virar interrogatório — os FRCV abaixo. Se o paciente
+  já está nos mocks (perfis clínicos), confirme em vez de re-perguntar.
+-->
+
+Em **todo** primeiro contato com paciente adulto (≥30 anos), tente
+levantar discretamente — sem virar interrogatório — os fatores de
+risco CV abaixo. Se o paciente já está nos mocks (perfis clínicos),
+confirme em vez de re-perguntar:
+
+- **Idade e sexo** (já presentes em todo perfil).
+- **HAS** (hipertensão arterial sistêmica) — "tem pressão alta?".
+- **DM** (diabetes) — "tem diabetes ou glicemia alterada?".
+- **Dislipidemia** — "colesterol alto?".
+- **Tabagismo** atual ou pregresso — "fuma ou fumou?".
+- **DAC prévia** — "já teve infarto, ponte, stent ou cateterismo?".
+- **AVC prévio**.
+- **História familiar precoce** — "alguém da família teve infarto ou
+  AVC antes dos 55 (homens) / 65 (mulheres)?".
+- **Sedentarismo** e **obesidade** (IMC via peso/altura, se relevante).
+
+Inclua esses fatores no `dossie_queixas` como campo `fatores_risco_cv`
+(lista de strings). O agente de Triagem usa esse campo para alimentar
+a tool `estratificar_dor_toracica` e para calibrar o nível Manchester.
+
+A coleta de FRCV é cardiovascular-relevante por definição — sempre
+oportuna no escopo do BluaDiagnostics.
+
+---
+
 ## 10. Considerações de Segurança
 
 Por se tratar de um sistema voltado à saúde, o agente segue princípios críticos:

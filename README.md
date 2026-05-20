@@ -59,6 +59,28 @@ integra diretamente o modelo de Machine Learning de detecção
 de arritmias desenvolvido pelo grupo — conectando dois trabalhos
 acadêmicos num sistema coeso.
 
+### Aprofundamento clínico (Patch 2)
+
+Dentro do escopo cardiovascular, o BluaDiagnostics ganhou
+**profundidade reforçada** em apresentações de risco que comumente
+escapam de triagens superficiais:
+
+- Tool `estratificar_dor_toracica` (HEART score simplificado, sem
+  ECG/troponina) acionada em toda queixa torácica e em equivalentes
+  anginosos.
+- Base de conhecimento dedicada: `cardiologia_estratificacao_risco.md`
+  e `cardiologia_apresentacoes_atipicas.md`.
+- Atenção sistemática a **apresentações atípicas** de SCA em mulheres
+  pós-menopausa, diabéticos e idosos (até 30% das SCAs nesse grupo
+  podem se manifestar sem dor torácica clássica).
+- Diferenciais não-coronarianos sempre considerados em dor torácica
+  aguda (dissecção aórtica, embolia pulmonar, tamponamento cardíaco,
+  pneumotórax hipertensivo, miocardite).
+- 3 perfis mock CV variados (IC com FE reduzida, FA paroxística,
+  angina microvascular) e 6 casos de eval cobrindo típico, atípico,
+  jovem com dor pleurítica, FA com síncope, crise hipertensiva sem
+  sintoma e dissecção aórtica.
+
 ---
 
 ## Stack técnica
