@@ -21,14 +21,23 @@ from __future__ import annotations
 
 import os
 import time
-from typing import Any
+from typing import Any, Literal
 from openai import OpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 # CONSTANTES
 
 # Modelo fixo — alterado apenas via variável de ambiente
-_MODELO_PADRAO = os.getenv("QWEN_DASHSCOPE_MODEL", "qwen-plus")
+def _modelo_padrao(backend: str) -> str:
+    """Lê o modelo no momento da chamada (não no import).
+
+    Necessário porque `colab_setup.preparar_ambiente()` pode rodar
+    depois do primeiro `import` deste módulo — se lêssemos no import,
+    a variável atualizada seria ignorada.
+    """
+    if backend == "dashscope":
+        return os.getenv("QWEN_DASHSCOPE_MODEL", "qwen-plus")
+    return os.getenv("QWEN_OLLAMA_MODEL", "qwen:9b")
 
 # Base URL do DashScope International
 _BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
@@ -71,7 +80,8 @@ def chat(
     enable_thinking: bool = False,
     temperature: float = TEMPERATURA_PADRAO,
     max_tokens: int | None = None,
-    modelo: str | None = None
+    modelo: str | None = None,
+    backend: Literal["dashscope", "ollama"] = "dashscope",
 ) -> dict[str, Any]:
     """
     Envia mensagens ao Qwen via DashScope e retorna a resposta
@@ -111,7 +121,7 @@ def chat(
 
     # Parâmetros da chamada
     params: dict[str, Any] = {
-        "model": modelo or _MODELO_PADRAO,
+        "model": modelo or _modelo_padrao(backend),
         "messages": messages,
         "temperature": temperature,
         "max_tokens": max_tokens,
@@ -223,3 +233,19 @@ def formatar_mensagens(
         "content": mensagem_usuario
     })
     return mensagens
+
+
+class QwenClient:
+    """Versão OO da função `chat`, útil para fixar o backend uma vez.
+
+    Equivalente funcional a chamar `chat(..., backend=self.backend)` em
+    todo lugar — existe só para deixar explícito (e auditável via grep)
+    qual backend cada consumidor usa.
+    """
+
+    def __init__(self, backend: Literal["dashscope", "ollama"] = "dashscope") -> None:
+        self.backend = backend
+
+    def chat(self, **kwargs: Any) -> dict[str, Any]:
+        kwargs.setdefault("backend", self.backend)
+        return chat(**kwargs)
