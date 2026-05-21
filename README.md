@@ -296,6 +296,7 @@ Troca via parâmetro: `chat(..., backend="dashscope" or "ollama")`.
    - Ícone 🔑 → **+ Add new secret**
    - Name: `DASHSCOPE_API_KEY` | Value: sua chave
    - Habilite **Notebook access**
+
 2.5. **Passos antes de rodar o notebook:
     -Ao abrir o notebook clique em arquivo -> Abrir notebook -> github -> digitar a URL do diretório e escolher o .ipynb
     -Verifique as pastas. Se não houver uma pasta chamada BluaDiagnostics-sprint. Crie uma célula inicial com !git clone URL DO        REPOSITORIO
