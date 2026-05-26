@@ -123,7 +123,11 @@ def main() -> int:
     parser.add_argument(
         "--beneficiario",
         default="BENEF-001",
-        choices=["BENEF-001", "BENEF-002", "BENEF-003"],
+        choices=[
+            "BENEF-001", "BENEF-002", "BENEF-003",
+            "BENEF-CV-001", "BENEF-CV-002", "BENEF-CV-003",
+            "BENEF-MARIA",
+        ],
         help="ID do beneficiário mockado (default: BENEF-001)",
     )
     parser.add_argument(
