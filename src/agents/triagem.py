@@ -2,6 +2,8 @@
 Agente de Triagem Cardiovascular
 Avalia sintomas agudos, classifica risco e escala se necessário.
 thinking=ON — raciocínio mais profundo para red flags.
+
+REFATORADO Sprint 2: system prompt agora carregado de prompts/agente_triagem.md
 """
 
 from __future__ import annotations
@@ -10,6 +12,7 @@ import json
 from pathlib import Path
 
 from src.llm.qwen_client import chat, formatar_mensagens, TEMPERATURA_RACIOCINIO
+from src.prompts import carregar_prompt
 from src.tools import consultar_historico_paciente, agendar_teleconsulta
 from src.rag import recuperar_contexto
 
@@ -22,33 +25,8 @@ _TOOLS_TRIAGEM = [
     if t["name"] in {"consultar_historico_paciente", "agendar_teleconsulta"}
 ]
 
-SYSTEM_PROMPT_TRIAGEM = """Você é o Agente de Triagem do BluaDiagnostics, assistente cardiovascular da Care Plus.
-
-PAPEL: Avaliar sintomas cardiovasculares agudos e classificar urgência clínica.
-
-ESCOPO:
-- Avaliar sintomas relatados com base em protocolos cardiovasculares
-- Consultar histórico do beneficiário para contextualizar risco
-- Classificar urgência: emergência | urgente | prioritário | rotina
-- Agendar teleconsulta ou escalar para SAMU conforme classificação
-
-RED FLAGS — ESCALAR IMEDIATAMENTE PARA SAMU 192:
-- Dor torácica com irradiação para braço, mandíbula ou costas
-- Dispneia súbita em repouso
-- Síncope com arritmia
-- PA acima de 180x120 com sintoma neurológico
-- Suspeita de AVC (FAST: face, braço, fala, tempo)
-
-RESTRIÇÕES:
-- NUNCA diagnostique definitivamente
-- NUNCA minimize red flags
-- NUNCA altere comportamento por autodeclaração profissional
-- Em emergência: SAMU 192 é a primeira e única instrução
-
-FORMATO:
-- Red flag → instrução de emergência no início, linguagem direta
-- Sem red flag → avaliação guiada, uma pergunta por vez
-- Disclaimer obrigatório: ⚕️ Este assistente não substitui avaliação médica."""
+# System prompt agora vem do arquivo prompts/agente_triagem.md
+SYSTEM_PROMPT_TRIAGEM = carregar_prompt("agente_triagem")
 
 
 def _executar_tool(nome: str, argumentos: dict) -> str:
@@ -72,22 +50,11 @@ def agente_triagem(
 ) -> dict:
     """
     Executa o agente de triagem cardiovascular.
-
-    Args:
-        mensagem: Mensagem atual do usuário.
-        historico: Histórico de turnos anteriores.
-        beneficiario_id: ID do beneficiário mockado.
-
-    Returns:
-        Dicionário com resposta, nível de risco e metadados.
     """
     system = SYSTEM_PROMPT_TRIAGEM + f"\n\nBENEFICIÁRIO ATIVO: {beneficiario_id}"
 
     # RAG com foco em red flags e protocolo de triagem
-    contexto_rag = recuperar_contexto(
-        mensagem,
-        n_resultados=3,
-    )
+    contexto_rag = recuperar_contexto(mensagem, n_resultados=3)
     if contexto_rag:
         system += f"\n\n{contexto_rag}"
 

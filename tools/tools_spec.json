@@ -11,11 +11,20 @@
         },
         "tipo": {
           "type": "string",
-          "enum": ["condicoes", "medicacoes", "consultas", "exames", "sinais_vitais"],
+          "enum": [
+            "condicoes",
+            "medicacoes",
+            "consultas",
+            "exames",
+            "sinais_vitais"
+          ],
           "description": "Tipo de informação a consultar. Use 'condicoes' para diagnósticos ativos, 'medicacoes' para lista de medicamentos em uso, 'consultas' para histórico de consultas cardiológicas, 'exames' para resultados de ECG/ecocardiograma/holter, 'sinais_vitais' para última aferição registrada."
         }
       },
-      "required": ["paciente_id", "tipo"]
+      "required": [
+        "paciente_id",
+        "tipo"
+      ]
     },
     "mock_responses": {
       "condicoes": {
@@ -122,7 +131,6 @@
       }
     }
   },
-
   {
     "name": "verificar_interacoes_medicamentosas",
     "description": "Verifica interações medicamentosas entre dois ou mais medicamentos, com foco em anti-hipertensivos, anticoagulantes e antiarrítmicos. Deve ser chamada quando o usuário mencionar uso de novos medicamentos ou antes de sugerir qualquer conduta farmacológica ao médico.",
@@ -138,21 +146,32 @@
           "description": "Lista com os nomes dos medicamentos a verificar. Mínimo 2 medicamentos. Ex: ['Losartana', 'Ibuprofeno']"
         }
       },
-      "required": ["medicamentos"]
+      "required": [
+        "medicamentos"
+      ]
     },
     "mock_responses": {
       "sem_interacao": {
-        "medicamentos_verificados": ["Losartana", "Paracetamol"],
+        "medicamentos_verificados": [
+          "Losartana",
+          "Paracetamol"
+        ],
         "interacoes": [],
         "severidade_maxima": "nenhuma",
         "mensagem": "Nenhuma interação clinicamente significativa identificada entre os medicamentos informados.",
         "recomendacao": "Uso concomitante considerado seguro. Manter monitoramento de rotina."
       },
       "interacao_moderada": {
-        "medicamentos_verificados": ["Losartana", "Ibuprofeno"],
+        "medicamentos_verificados": [
+          "Losartana",
+          "Ibuprofeno"
+        ],
         "interacoes": [
           {
-            "par": ["Losartana", "Ibuprofeno"],
+            "par": [
+              "Losartana",
+              "Ibuprofeno"
+            ],
             "severidade": "moderada",
             "mecanismo": "AINEs como ibuprofeno podem reduzir o efeito anti-hipertensivo dos bloqueadores do receptor de angiotensina (BRAs) e aumentar risco de lesão renal aguda.",
             "manifestacao_clinica": "Redução do controle pressórico, possível elevação de creatinina.",
@@ -164,10 +183,16 @@
         "nota": "[RASCUNHO_AGUARDANDO_REVISAO_MEDICA] — Não alterar medicação sem orientação do cardiologista responsável."
       },
       "interacao_grave": {
-        "medicamentos_verificados": ["Atenolol", "Verapamil"],
+        "medicamentos_verificados": [
+          "Atenolol",
+          "Verapamil"
+        ],
         "interacoes": [
           {
-            "par": ["Atenolol", "Verapamil"],
+            "par": [
+              "Atenolol",
+              "Verapamil"
+            ],
             "severidade": "grave",
             "mecanismo": "Efeito aditivo de bloqueio do nó AV e depressão da contratilidade miocárdica. Betabloqueador + bloqueador de canal de cálcio não-diidropiridínico é combinação de alto risco cardíaco.",
             "manifestacao_clinica": "Bradicardia severa, bloqueio atrioventricular, hipotensão, insuficiência cardíaca aguda.",
@@ -180,7 +205,6 @@
       }
     }
   },
-
   {
     "name": "agendar_teleconsulta",
     "description": "Agenda uma teleconsulta com cardiologista na plataforma Blua. O nível de urgência deve refletir a avaliação clínica do agente — nunca perguntar ao usuário qual urgência ele quer. Deve ser chamada após triagem de sintomas ou detecção de alteração no ritmo cardíaco.",
@@ -194,7 +218,11 @@
         },
         "urgencia": {
           "type": "string",
-          "enum": ["rotina", "prioritario", "urgente"],
+          "enum": [
+            "rotina",
+            "prioritario",
+            "urgente"
+          ],
           "description": "Nível de urgência clínica. 'rotina': sem sintomas agudos, retorno preventivo. 'prioritario': sintomas presentes mas sem risco imediato. 'urgente': red flag cardiovascular detectada, necessita atendimento em horas."
         },
         "motivo": {
@@ -202,7 +230,10 @@
           "description": "Resumo clínico do motivo do agendamento gerado pelo agente. Será enviado ao médico como briefing pré-consulta. Ex: 'Paciente relata palpitações recorrentes. Ritmo analisado como irregular em 4 de 5 registros. Histórico de arritmia sinusal.'"
         }
       },
-      "required": ["urgencia", "motivo"]
+      "required": [
+        "urgencia",
+        "motivo"
+      ]
     },
     "mock_responses": {
       "rotina": {
@@ -240,7 +271,6 @@
       }
     }
   },
-
   {
     "name": "analisar_ritmo_cardiaco",
     "description": "Integração com o modelo de Machine Learning de detecção de arritmias do projeto BluaDiagnostics. Recebe atributos calculados a partir do IBI (Intervalo Entre Batimentos) e retorna a classificação do ritmo cardíaco. Deve ser chamada durante o check-up quando o usuário informar dados de batimentos cardíacos ou quando wearable transmitir leitura.",
@@ -313,7 +343,6 @@
       "acao": "Disparar notificação via sistema externo de alertas — fora do escopo do agente"
     }
   },
-
   {
     "name": "consultar_sinais_vitais_wearable",
     "description": "Consulta leituras de sinais vitais cardiovasculares simuladas de wearable (Apple Health, Google Fit ou Oura Ring) do beneficiário. Retorna as últimas leituras disponíveis de frequência cardíaca, variabilidade e saturação de oxigênio.",
@@ -326,16 +355,28 @@
         },
         "dispositivo": {
           "type": "string",
-          "enum": ["apple_health", "google_fit", "oura"],
+          "enum": [
+            "apple_health",
+            "google_fit",
+            "oura"
+          ],
           "description": "Fonte dos dados do wearable."
         },
         "periodo": {
           "type": "string",
-          "enum": ["ultima_leitura", "ultimas_24h", "ultimos_7d"],
+          "enum": [
+            "ultima_leitura",
+            "ultimas_24h",
+            "ultimos_7d"
+          ],
           "description": "Período de dados a retornar."
         }
       },
-      "required": ["paciente_id", "dispositivo", "periodo"]
+      "required": [
+        "paciente_id",
+        "dispositivo",
+        "periodo"
+      ]
     },
     "mock_responses": {
       "ultima_leitura": {
@@ -354,7 +395,6 @@
       }
     }
   },
-
   {
     "name": "estratificar_dor_toracica",
     "description": "Estratifica risco cardiovascular de dor torácica ou equivalente anginoso. Usa HEART score simplificado (sem ECG/troponina). Inclui ajuste para apresentação atípica em mulheres, diabéticos, idosos e pacientes com IC prévia. Use sempre que houver suspeita cardiovascular, mesmo na ausência de dor torácica clássica.",
@@ -363,33 +403,60 @@
       "properties": {
         "caracteristicas_dor": {
           "type": "array",
-          "items": {"type": "string"},
+          "items": {
+            "type": "string"
+          },
           "description": "Lista de descritores da dor. Termos aceitos: opressiva, aperto, peso, queimacao_retroesternal, irradiacao_braco_esquerdo, irradiacao_mandibula, irradiacao_dorso, deflagrada_por_esforco, alivio_repouso, alivio_nitrato, pleuritica, reproduzivel_palpacao, punctada, ventilatorio_dependente, movimentos_dependente, longa_duracao_estavel. Pode ser lista vazia em equivalente anginoso."
         },
         "sintomas_associados": {
           "type": "array",
-          "items": {"type": "string"},
+          "items": {
+            "type": "string"
+          },
           "description": "Sintomas que acompanham. Aceitos: sudorese, sudorese_fria, nausea, vomito, dispneia, sincope, pre_sincope, palidez."
         },
-        "idade": {"type": "integer", "minimum": 0, "maximum": 120},
+        "idade": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 120
+        },
         "sexo": {
           "type": "string",
-          "enum": ["masculino", "feminino", "outro"]
+          "enum": [
+            "masculino",
+            "feminino",
+            "outro"
+          ]
         },
         "fatores_risco": {
           "type": "array",
-          "items": {"type": "string"},
+          "items": {
+            "type": "string"
+          },
           "description": "Fatores de risco CV. Aceitos: hipertensao, diabetes, dislipidemia, tabagismo_ativo, tabagismo_recente, dac_previa, iam_previo, avc_previo, doenca_arterial_periferica, drc_estagio_3_ou_mais, obesidade, sedentarismo, iam_familia_precoce."
         },
         "grupos_atipicos": {
           "type": "array",
-          "items": {"type": "string"},
+          "items": {
+            "type": "string"
+          },
           "description": "Marcadores de risco para apresentação atípica. Aceitos: mulher, diabetico, idoso_65, neuropata, ic_previa."
         },
-        "duracao_minutos": {"type": "integer"},
-        "em_esforco": {"type": "boolean", "default": false}
+        "duracao_minutos": {
+          "type": "integer"
+        },
+        "em_esforco": {
+          "type": "boolean",
+          "default": false
+        }
       },
-      "required": ["caracteristicas_dor", "sintomas_associados", "idade", "sexo", "fatores_risco"]
+      "required": [
+        "caracteristicas_dor",
+        "sintomas_associados",
+        "idade",
+        "sexo",
+        "fatores_risco"
+      ]
     },
     "mock_responses": {
       "tipico_alto_risco": {
@@ -442,6 +509,111 @@
         "conduta_recomendada": "teleconsulta com cardiologia ou clínica geral em 24-48h, com orientações claras de retorno em caso de piora",
         "apresentacao_atipica_detectada": false,
         "disclaimer": "Estratificação de apoio à triagem, sem ECG nem biomarcadores. Não substitui avaliação médica completa."
+      }
+    }
+  },
+  {
+    "name": "sugerir_rascunho_prescricao",
+    "description": "Gera um rascunho de prescrição cardiovascular pós-teleconsulta para revisão e aprovação por médico humano. Esta tool NUNCA emite prescrição válida — sempre retorna status RASCUNHO_AGUARDANDO_REVISAO_MEDICA. Validações automáticas: teleconsulta nos últimos 7 dias (Resolução CFM 2.314/22), conflitos com alergias registradas, escopo cardiovascular estrito. Deve ser chamada apenas após verificar histórico de consultas e medicações via consultar_historico_paciente.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "paciente_id": {
+          "type": "string",
+          "description": "Identificador único do beneficiário Care Plus. Ex: BENEF-MARIA, BENEF-001."
+        },
+        "indicacao_clinica": {
+          "type": "string",
+          "description": "Descrição breve da indicação clínica para a prescrição. Ex: 'manutenção do tratamento de hipertensão arterial controlada', 'profilaxia secundária pós-IAM'."
+        },
+        "medicamentos_sugeridos": {
+          "type": "array",
+          "description": "Lista de medicamentos a incluir no rascunho. Apenas medicamentos cardiovasculares (anti-hipertensivos, antiarrítmicos, anticoagulantes, antiagregantes, estatinas, diuréticos cardiovasculares, nitratos).",
+          "items": {
+            "type": "object",
+            "properties": {
+              "nome": {
+                "type": "string",
+                "description": "Nome do medicamento. Ex: 'Losartana Potássica', 'Atorvastatina'."
+              },
+              "dose": {
+                "type": "string",
+                "description": "Dose por administração. Ex: '50mg', '20mg'."
+              },
+              "frequencia": {
+                "type": "string",
+                "description": "Frequência de administração. Ex: '1x ao dia', '2x ao dia em intervalos de 12h'."
+              },
+              "duracao_dias": {
+                "type": "integer",
+                "description": "Duração do tratamento em dias. Use 90 para manutenção de hipertensão crônica."
+              }
+            },
+            "required": [
+              "nome",
+              "dose",
+              "frequencia"
+            ]
+          }
+        }
+      },
+      "required": [
+        "paciente_id",
+        "indicacao_clinica",
+        "medicamentos_sugeridos"
+      ]
+    },
+    "mock_responses": {
+      "rascunho_aprovado": {
+        "status": "RASCUNHO_AGUARDANDO_REVISAO_MEDICA",
+        "tag": "RASCUNHO_AGUARDANDO_REVISAO_MEDICA",
+        "paciente_id": "BENEF-MARIA",
+        "paciente_nome": "Maria Silva Fictícia",
+        "indicacao_clinica": "manutenção do tratamento de hipertensão arterial controlada",
+        "medicamentos": [
+          {
+            "nome": "Losartana Potássica",
+            "dose": "50mg",
+            "frequencia": "1x ao dia",
+            "duracao_dias": 90
+          }
+        ],
+        "medico_responsavel_consulta": "Dr. João Almeida — CRM 45678/SP",
+        "data_consulta_origem": "2026-03-12",
+        "data_geracao_rascunho": "2026-05-25 14:30",
+        "approved_by_medico": false,
+        "aviso_legal": "Resolução CFM 2.314/22: aprovação médica obrigatória antes de dispensação. O BluaDiagnostics não substitui decisão clínica humana.",
+        "proxima_etapa": "Aguardando aprovação do médico responsável via app Blua."
+      },
+      "consulta_expirada": {
+        "erro": "Sem teleconsulta nos últimos 7 dias. Resolução CFM 2.314/22 exige vínculo clínico recente.",
+        "ultima_consulta_registrada": "2025-12-10",
+        "orientacao": "Agendar teleconsulta com cardiologista antes de prescrever.",
+        "status": "RECUSADO",
+        "tag": "RASCUNHO_AGUARDANDO_REVISAO_MEDICA"
+      },
+      "alergia_detectada": {
+        "erro": "Conflito com alergias registradas do beneficiário.",
+        "conflitos": [
+          {
+            "medicamento": "Captopril",
+            "substancia_alergia": "Captopril",
+            "reacao": "angioedema",
+            "gravidade": "alta"
+          }
+        ],
+        "orientacao": "Revisar escolha terapêutica e considerar alternativas. Não emitir rascunho sem nova avaliação médica.",
+        "status": "RECUSADO",
+        "tag": "RASCUNHO_AGUARDANDO_REVISAO_MEDICA"
+      },
+      "fora_escopo_cv": {
+        "erro": "Medicamento fora do escopo cardiovascular do BluaDiagnostics.",
+        "medicamentos_recusados": [
+          "Amoxicilina"
+        ],
+        "orientacao": "Para prescrições fora do escopo cardiovascular, encaminhar ao canal de clínica geral da Care Plus.",
+        "status": "RECUSADO",
+        "tag": "RASCUNHO_AGUARDANDO_REVISAO_MEDICA"
       }
     }
   }

@@ -1,37 +1,31 @@
 """
-Agente Roteador
+Agente Supervisor (anteriormente "router")
 Classifica a intenção do usuário e decide qual agente acionar.
 thinking=OFF — prioridade em latência mínima.
+
+REFATORADO Sprint 2:
+- Renomeado conceitualmente para 'supervisor' (mantém função 'rotear' para compat)
+- System prompt carregado de prompts/agente_supervisor.md
+- Intent 'prescricao' adicionada para o novo agente
+- Função 'supervisionar' adiciona lógica estatal (forçar triagem se RED_FLAG persistir)
 """
 
 from __future__ import annotations
 
 import json
+
 from src.llm.qwen_client import chat, formatar_mensagens
+from src.prompts import carregar_prompt
 
-SYSTEM_PROMPT_ROUTER = """Você é o roteador do BluaDiagnostics, assistente cardiovascular da Care Plus.
+# System prompt agora vem do arquivo prompts/agente_supervisor.md
+SYSTEM_PROMPT_SUPERVISOR = carregar_prompt("agente_supervisor")
 
-Sua única função é classificar a intenção do usuário em uma das categorias abaixo e retornar APENAS um JSON válido, sem texto adicional.
-
-CATEGORIAS:
-- checkup: usuário quer fazer check-up, informar sinais vitais ou analisar batimentos
-- triagem: usuário relata sintoma agudo cardiovascular (dor no peito, palpitação, falta de ar, tontura, desmaio)
-- suporte: usuário tem dúvida sobre medicação, interação medicamentosa ou histórico
-- fora_de_escopo: assunto não cardiovascular
-
-FORMATO DE RESPOSTA (apenas JSON):
-{"intent": "checkup"|"triagem"|"suporte"|"fora_de_escopo", "confianca": 0.0-1.0}
-
-EXEMPLOS:
-Usuário: "Quero fazer meu check-up" → {"intent": "checkup", "confianca": 0.98}
-Usuário: "Estou com dor no peito" → {"intent": "triagem", "confianca": 0.97}
-Usuário: "Posso tomar ibuprofeno com Losartana?" → {"intent": "suporte", "confianca": 0.95}
-Usuário: "Como tratar diabetes?" → {"intent": "fora_de_escopo", "confianca": 0.99}"""
+_INTENTS_VALIDAS = {"checkup", "triagem", "suporte", "prescricao", "fora_de_escopo"}
 
 
 def rotear(mensagem: str, historico: list[dict] | None = None) -> dict:
     """
-    Classifica a intenção do usuário.
+    Classifica a intenção do usuário (função base, sem lógica estatal).
 
     Args:
         mensagem: Mensagem atual do usuário.
@@ -39,12 +33,13 @@ def rotear(mensagem: str, historico: list[dict] | None = None) -> dict:
 
     Returns:
         Dicionário com intent e confianca.
-        Em caso de erro, retorna intent checkup como fallback seguro.
+        Em caso de erro, retorna intent triagem como fallback (mais seguro
+        que checkup quando há ambiguidade — ativa thinking + RAG completo).
     """
     historico = historico or []
 
     mensagens = formatar_mensagens(
-        system_prompt=SYSTEM_PROMPT_ROUTER,
+        system_prompt=SYSTEM_PROMPT_SUPERVISOR,
         historico=historico,
         mensagem_usuario=mensagem,
     )
@@ -58,15 +53,54 @@ def rotear(mensagem: str, historico: list[dict] | None = None) -> dict:
 
         resultado = json.loads(resposta["content"].strip())
 
-        intent = resultado.get("intent", "checkup")
-        if intent not in {"checkup", "triagem", "suporte", "fora_de_escopo"}:
-            intent = "checkup"
+        intent = resultado.get("intent", "triagem")
+        if intent not in _INTENTS_VALIDAS:
+            intent = "triagem"
 
         return {
             "intent": intent,
-            "confianca": resultado.get("confianca", 0.8)
+            "confianca": resultado.get("confianca", 0.8),
+            "motivo": "classificacao_llm",
         }
 
     except Exception as exc:
-        print(f"[router] Erro na classificação: {exc}. Usando fallback: checkup")
-        return {"intent": "checkup", "confianca": 0.5}
+        print(f"[supervisor] Erro na classificação: {exc}. Usando fallback: triagem")
+        return {
+            "intent": "triagem",
+            "confianca": 0.5,
+            "motivo": "fallback_erro_parsing",
+        }
+
+
+def supervisionar(
+    mensagem: str,
+    historico: list[dict] | None = None,
+    flags_safety_anteriores: list[str] | None = None,
+) -> dict:
+    """
+    Versão completa do supervisor com lógica estatal.
+
+    Diferenças vs rotear():
+    - Se RED_FLAG_SEM_ESCALADA persistiu do turno anterior, força triagem.
+    - Pode aplicar outras regras de escalada baseadas em estado acumulado.
+
+    Args:
+        mensagem: Mensagem atual.
+        historico: Turnos anteriores.
+        flags_safety_anteriores: Flags da safety do turno N-1.
+
+    Returns:
+        {"intent": str, "confianca": float, "motivo": str}
+    """
+    flags = flags_safety_anteriores or []
+
+    # Escalada persistente: RED_FLAG não resolvido → força triagem
+    if "RED_FLAG_SEM_ESCALADA" in flags:
+        return {
+            "intent": "triagem",
+            "confianca": 1.0,
+            "motivo": "escalada_persistente_red_flag",
+        }
+
+    # Caso normal: classifica via LLM
+    return rotear(mensagem, historico)
