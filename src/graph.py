@@ -470,13 +470,20 @@ def construir_grafo() -> StateGraph:
     # Saída encerra o grafo
     builder.add_edge("saida", END)
 
-    # Compilar com memória para multi-turno
+    # Compilar com memória para multi-turno + HITL síncrono via interrupt_after
+    # B6: depois do agente_prescricao gerar o rascunho, o grafo PAUSA antes
+    # de chegar em safety/saida. O frontend exibe rascunho + botão aprovar.
+    # Retomada via `aprovar_rascunho_prescricao(grafo, thread_id, aprovado=True/False)`.
     memoria = MemorySaver()
-    grafo = builder.compile(checkpointer=memoria)
+    grafo = builder.compile(
+        checkpointer=memoria,
+        interrupt_after=["prescricao"],
+    )
 
     print("[graph] Grafo BluaDiagnostics Sprint 2 compilado com sucesso.")
     print("[graph] 10 nós: pre_safety, supervisor, checkup, triagem, suporte, "
           "prescricao, escalada_humana, fora_escopo, safety, saida")
+    print("[graph] HITL síncrono: pausa após 'prescricao' (CFM 2.314/22).")
     return grafo
 
 
@@ -522,4 +529,72 @@ def executar_turno(
 
     config = {"configurable": {"thread_id": thread_id}}
     estado_final = grafo.invoke(estado_inicial, config=config)
+
+    # B6: detectar se grafo pausou no interrupt_after de prescricao.
+    # LangGraph deixa `next` populado com os nós pendentes quando há interrupção.
+    snapshot = grafo.get_state(config)
+    if snapshot.next:
+        # Pausou — rascunho gerado pelo prescricao está em resposta_agente,
+        # mas safety/saida ainda não rodaram. Sinaliza pro frontend mostrar
+        # botões aprovar/rejeitar.
+        estado_final = dict(estado_final)  # copia mutável
+        estado_final["requer_aprovacao_humana"] = True
+        # Pra UX consistente, expor rascunho como resposta provisória
+        if not estado_final.get("resposta_final"):
+            estado_final["resposta_final"] = estado_final.get("resposta_agente", "")
+
+    return estado_final
+
+
+def aprovar_rascunho_prescricao(
+    grafo: StateGraph,
+    thread_id: str,
+    aprovado: bool,
+    observacao_medico: str | None = None,
+) -> dict:
+    """
+    Retoma execução do grafo pausado no interrupt_after de prescricao (HITL).
+
+    Args:
+        grafo: Grafo compilado pelo construir_grafo().
+        thread_id: Mesmo thread_id usado em executar_turno().
+        aprovado: True = médico aprovou rascunho, False = rejeitou.
+        observacao_medico: Justificativa opcional (vai pro audit log).
+
+    Returns:
+        Estado final após safety + saida rodarem.
+
+    Comportamento:
+        - aprovado=True: grafo continua normal, prescricao já está no estado.
+        - aprovado=False: estado é atualizado com mensagem de recusa e flag
+          RASCUNHO_REJEITADO_HUMANO antes de prosseguir.
+    """
+    config = {"configurable": {"thread_id": thread_id}}
+
+    if not aprovado:
+        # Sobrescrever a resposta antes de safety/saida
+        msg_recusa = (
+            "Rascunho não aprovado na revisão médica."
+            + (f" Observação: {observacao_medico}" if observacao_medico else "")
+            + " Recomenda-se nova teleconsulta ou reavaliação clínica antes "
+            "de emitir prescrição."
+        )
+        grafo.update_state(
+            config,
+            {
+                "resposta_agente": msg_recusa,
+                "flags_safety_anteriores": ["RASCUNHO_REJEITADO_HUMANO"],
+            },
+        )
+    else:
+        # Só registra a aprovação no estado (audit log pega depois)
+        grafo.update_state(
+            config,
+            {
+                "flags_safety_anteriores": ["RASCUNHO_APROVADO_HUMANO"],
+            },
+        )
+
+    # Retomar execução — `None` como input significa "continuar do checkpoint"
+    estado_final = grafo.invoke(None, config=config)
     return estado_final

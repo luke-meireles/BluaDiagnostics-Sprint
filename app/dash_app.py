@@ -43,7 +43,7 @@ import dash
 from dash import Dash, html, dcc, callback, Input, Output, State, no_update, ctx
 import dash_bootstrap_components as dbc
 
-from src.graph import construir_grafo, executar_turno
+from src.graph import construir_grafo, executar_turno, aprovar_rascunho_prescricao
 
 # =============================================================================
 # Configuração e bootstrap do grafo
@@ -354,12 +354,15 @@ def atualizar_card_paciente(beneficiario_id):
     Input("btn-enviar", "n_clicks"),
     Input("user-input", "n_submit"),
     Input("btn-nova-sessao", "n_clicks"),
+    Input("btn-hitl-aprovar", "n_clicks"),
+    Input("btn-hitl-rejeitar", "n_clicks"),
     State("user-input", "value"),
     State("beneficiario-select", "value"),
     State("session-data", "data"),
     prevent_initial_call=True,
 )
-def processar_mensagem(n_enviar, n_submit, n_nova, mensagem, beneficiario, sessao):
+def processar_mensagem(n_enviar, n_submit, n_nova, n_aprovar, n_rejeitar,
+                       mensagem, beneficiario, sessao):
     trig = ctx.triggered_id
 
     # Reset de sessão
@@ -375,25 +378,45 @@ def processar_mensagem(n_enviar, n_submit, n_nova, mensagem, beneficiario, sessa
                            style={"alignSelf": "center"})],
                 "—", "—", "—", "—", "—", "—", None, "", False)
 
-    if not mensagem or not mensagem.strip():
+    # B6 — HITL: aprovação/rejeição do rascunho de prescrição
+    if trig in ("btn-hitl-aprovar", "btn-hitl-rejeitar"):
+        aprovado = trig == "btn-hitl-aprovar"
+        print(f"\n[dash_app] HITL: rascunho {'aprovado' if aprovado else 'rejeitado'}")
+        try:
+            estado = aprovar_rascunho_prescricao(
+                grafo=GRAFO,
+                thread_id=sessao["thread_id"],
+                aprovado=aprovado,
+            )
+        except Exception as exc:
+            print(f"[dash_app] Erro HITL: {exc}")
+            return (no_update, no_update, no_update, no_update, no_update,
+                    no_update, no_update,
+                    html.Div(f"Erro HITL: {exc}", className="hud-alert"),
+                    no_update, no_update, no_update)
+        # Substitui a "mensagem" do usuário pelo log de auditoria HITL
+        mensagem = f"[Médico {'aprovou' if aprovado else 'rejeitou'} o rascunho]"
+
+    elif not mensagem or not mensagem.strip():
         return (no_update,) * 11
 
-    # Executar turno no grafo
-    print(f"\n[dash_app] Turno: {mensagem!r}")
-    try:
-        estado = executar_turno(
-            grafo=GRAFO,
-            mensagem_usuario=mensagem,
-            thread_id=sessao["thread_id"],
-            beneficiario_id=beneficiario,
-            flags_safety_anteriores=sessao.get("flags_safety_anteriores", []),
-        )
-    except Exception as exc:
-        print(f"[dash_app] Erro: {exc}")
-        return (no_update, no_update, no_update, no_update, no_update,
-                no_update, no_update,
-                html.Div(f"Erro: {exc}", className="hud-alert"),
-                no_update, no_update, no_update)
+    else:
+        # Executar turno normal no grafo
+        print(f"\n[dash_app] Turno: {mensagem!r}")
+        try:
+            estado = executar_turno(
+                grafo=GRAFO,
+                mensagem_usuario=mensagem,
+                thread_id=sessao["thread_id"],
+                beneficiario_id=beneficiario,
+                flags_safety_anteriores=sessao.get("flags_safety_anteriores", []),
+            )
+        except Exception as exc:
+            print(f"[dash_app] Erro: {exc}")
+            return (no_update, no_update, no_update, no_update, no_update,
+                    no_update, no_update,
+                    html.Div(f"Erro: {exc}", className="hud-alert"),
+                    no_update, no_update, no_update)
 
     # Atualizar sessão
     resposta_final = estado.get("resposta_final", "")

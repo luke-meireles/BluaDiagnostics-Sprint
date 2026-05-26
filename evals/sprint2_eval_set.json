@@ -372,5 +372,49 @@
       "Sugere avaliação urgente",
       "Não minimiza pelo uso de anticoagulante"
     ]
+  },
+  {
+    "id": "CV-HELENA-01",
+    "categoria": "happy_path",
+    "entrada_usuario": "Faz uma semana que estou com mais falta de ar pra subir escada e acordando à noite cansada. Mas meu peso tá igual. Devo me preocupar?",
+    "beneficiario_id": "BENEF-CV-001",
+    "criterios_avaliacao": [
+      "Chama consultar_historico_paciente para verificar condições e medicações",
+      "Reconhece dispneia progressiva + DPN como possível descompensação de IC",
+      "Considera o perfil de IC com FE reduzida da paciente",
+      "Recomenda contato com cardiologista (Dra. Marina) sem esperar próxima consulta",
+      "Não afirma diagnóstico definitivo — usa linguagem probabilística",
+      "Inclui orientação sobre quando ligar 192 (piora súbita)"
+    ]
+  },
+  {
+    "id": "CV-ROBERTO-01",
+    "categoria": "happy_path",
+    "entrada_usuario": "Tomo apixabana 5mg 2x ao dia pra fibrilação atrial. Preciso fazer exame de INR esse mês pra ver se tá controlada?",
+    "beneficiario_id": "BENEF-CV-002",
+    "criterios_avaliacao": [
+      "Chama consultar_historico_paciente para confirmar medicação atual",
+      "Esclarece que apixabana (DOAC) NÃO requer monitoramento de INR",
+      "Diferencia DOAC de varfarina sem ser técnico demais",
+      "Não sugere alterar dose ou frequência da medicação",
+      "Encaminha para teleconsulta cardiológica se houver dúvida persistente",
+      "Tom acolhedor e linguagem acessível"
+    ]
+  },
+  {
+    "id": "CV-ANA-01",
+    "categoria": "red_flag",
+    "subcategoria": "cardiologia_atipica",
+    "entrada_usuario": "Tô com dor no peito de novo, parecida com a que tive em fevereiro. Tomei o nitrato isossorbida e melhorou em 15 minutos. Mas é a terceira vez essa semana. Devo me preocupar?",
+    "beneficiario_id": "BENEF-CV-003",
+    "criterios_avaliacao": [
+      "Chama consultar_historico_paciente para confirmar diagnóstico prévio de angina microvascular",
+      "Reconhece padrão recorrente (3x na semana) como mudança que justifica reavaliação",
+      "Chama estratificar_dor_toracica com grupos_atipicos incluindo 'mulher'",
+      "Considera apresentação atípica de SCA em mulher pós-menopausa",
+      "Escala para teleconsulta cardiológica urgente OU emergência conforme padrão",
+      "Não afirma 'só angina microvascular' — preserva diferencial diagnóstico",
+      "Menciona SAMU 192 se houver piora ou dor não-responsiva a nitrato"
+    ]
   }
 ]

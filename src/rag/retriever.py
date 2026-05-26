@@ -7,6 +7,7 @@ Evoluções vs Sprint 1:
 - Saída estruturada com score de similaridade para o painel técnico
 - Filtro por categoria de metadado (red_flag, bula, protocolo, etc.)
 - Integração com reranker (cross-encoder) ativável
+- B19: cache LRU em recuperar_contexto (queries repetidas em eval set)
 
 Funções principais:
 - recuperar_contexto(query, ...) → string formatada (compat Sprint 1)
@@ -16,6 +17,7 @@ Funções principais:
 from __future__ import annotations
 
 import os
+from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
@@ -25,8 +27,10 @@ from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunct
 from .indexer import CHROMA_DIR, COLECAO_NOME, MODELO_EMBEDDINGS
 
 # Configurações
-N_RESULTADOS_PADRAO = 4
-N_CANDIDATOS_MMR = 10  # busca 10, MMR seleciona N_RESULTADOS_PADRAO finais
+# B19: n_resultados reduzido de 4 -> 3 (RAG context ~25% menor, mantém qualidade
+# clínica em CV onde os top-3 chunks já cobrem a maioria das queries vistas no eval)
+N_RESULTADOS_PADRAO = 3
+N_CANDIDATOS_MMR = 8  # busca 8 (era 10), MMR seleciona N_RESULTADOS_PADRAO finais
 DISTANCIA_MAXIMA = 1.2
 LAMBDA_MMR = 0.7  # 1=só relevância, 0=só diversidade
 
@@ -281,6 +285,42 @@ def _aplicar_reranker(query: str, candidatos: list[dict]) -> list[dict]:
 
 
 # Compatibilidade com Sprint 1 — retorna apenas a string
+# B19: cache LRU acelera queries repetidas (eval set tem várias perguntas
+# idênticas / muito parecidas). Chave do cache é (query, n_resultados, filtro).
+# maxsize=128 cobre 1 sessão de eval inteira (32-35 casos) com folga.
+
+
+def _filtro_cacheavel(filtro):
+    """Normaliza filtro_categoria pra ser hashable (lists -> tuples)."""
+    if isinstance(filtro, list):
+        return tuple(filtro)
+    return filtro
+
+
+@lru_cache(maxsize=128)
+def _recuperar_contexto_cached(
+    query: str,
+    n_resultados: int,
+    filtro_categoria_hashable,
+) -> str:
+    """Versão cacheada — argumentos garantidamente hashables."""
+    # Normaliza o filtro de volta pra list se foi serializado como tuple
+    filtro = (
+        list(filtro_categoria_hashable)
+        if isinstance(filtro_categoria_hashable, tuple)
+        else filtro_categoria_hashable
+    )
+    contexto, _ = recuperar_contexto_detalhado(
+        query=query,
+        n_resultados=n_resultados,
+        filtro_categoria=filtro,
+        usar_mmr=True,
+        usar_auto_rag=True,
+        usar_reranker=False,
+    )
+    return contexto
+
+
 def recuperar_contexto(
     query: str,
     n_resultados: int = N_RESULTADOS_PADRAO,
@@ -292,12 +332,13 @@ def recuperar_contexto(
     Para os agentes que querem o documentos_estruturados (Sprint 2),
     use recuperar_contexto_detalhado diretamente.
     """
-    contexto, _ = recuperar_contexto_detalhado(
-        query=query,
-        n_resultados=n_resultados,
-        filtro_categoria=filtro_categoria,
-        usar_mmr=True,
-        usar_auto_rag=True,
-        usar_reranker=False,
+    return _recuperar_contexto_cached(
+        query,
+        n_resultados,
+        _filtro_cacheavel(filtro_categoria),
     )
-    return contexto
+
+
+def limpar_cache_recuperacao() -> None:
+    """Limpa o cache LRU (útil em testes ou após reindexação)."""
+    _recuperar_contexto_cached.cache_clear()

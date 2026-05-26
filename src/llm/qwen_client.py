@@ -39,8 +39,25 @@ def _modelo_padrao(backend: str) -> str:
         return os.getenv("QWEN_DASHSCOPE_MODEL", "qwen-plus")
     return os.getenv("QWEN_OLLAMA_MODEL", "qwen:9b")
 
-# Base URL do DashScope International
-_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+# Base URLs por backend — dashscope cloud OU ollama on-prem
+_DASHSCOPE_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+_OLLAMA_BASE_URL_DEFAULT = "http://localhost:11434/v1"
+
+
+def _obter_base_url(backend: str) -> str:
+    """Retorna a base_url do backend ativo.
+
+    DashScope: URL fixa do endpoint internacional.
+    Ollama: lê OLLAMA_BASE_URL (default: localhost:11434) — útil pra rodar
+    em outro host ou container.
+    """
+    if backend == "ollama":
+        return os.getenv("OLLAMA_BASE_URL", _OLLAMA_BASE_URL_DEFAULT)
+    return _DASHSCOPE_BASE_URL
+
+
+# Mantido por compat retroativa (Sprint 1 importava esse símbolo)
+_BASE_URL = _DASHSCOPE_BASE_URL
 
 # Temperatura padrão por tipo de agente
 # Roteador e checkup: baixa — respostas determinísticas
@@ -52,19 +69,35 @@ TEMPERATURA_RACIOCINIO = 0.5
 MAX_TOKENS_PADRAO = 1024
 MAX_TOKENS_RACIOCINIO = 2048 # thinking = ON gasta mais tokens
 
-# Cliente OpenAI-compatible (DashScope)
-def _obter_cliente() -> OpenAI:
+# Cliente OpenAI-compatible — DashScope cloud OU Ollama on-prem
+def _obter_cliente(backend: str = "dashscope") -> OpenAI:
     """
-    Instancia o cliente OpenAI apontando para DashScope.
-    Lança RuntimeError se a chave não estiver configurada.
+    Instancia o cliente OpenAI roteando por backend.
+
+    - dashscope: exige DASHSCOPE_API_KEY (chave do Bailian International)
+    - ollama: aceita qualquer string como api_key (Ollama ignora) e usa
+      OLLAMA_BASE_URL como endpoint (default localhost:11434)
+
+    Args:
+        backend: "dashscope" (default) ou "ollama"
+
+    Raises:
+        RuntimeError: backend=dashscope sem DASHSCOPE_API_KEY configurada
     """
+    if backend == "ollama":
+        # Ollama não autentica via key, mas o SDK OpenAI exige uma string
+        # não-vazia. Usamos "ollama" como sentinel — ignorado pelo servidor.
+        return OpenAI(api_key="ollama", base_url=_obter_base_url("ollama"))
+
+    # dashscope (default)
     chave = os.getenv("DASHSCOPE_API_KEY")
     if not chave:
         raise RuntimeError(
-            "DASHSCOPE_API_KEY não encontrada."
-            "No Colab, configure em Secrets (ícone 🔑) com Notebook access habilitado."
+            "DASHSCOPE_API_KEY não encontrada. "
+            "Defina via .env, Colab Secrets ou variável de ambiente. "
+            "Alternativa: use backend='ollama' rodando localmente."
         )
-    return OpenAI(api_key= chave, base_url= _BASE_URL)
+    return OpenAI(api_key=chave, base_url=_obter_base_url("dashscope"))
 
 # Função principal de chat
 @retry(
@@ -89,7 +122,7 @@ def chat(
     Args:
         messages: Histórico de mensagens no formato OpenAI
                   [{"role": "system"|"user"|"assistant", "content": "..."}]
-        tools: Lista de tools no formato JSON Schema OpenAI/Anthropic.
+        tools: Lista de tools no formato JSON Schema OpenAI-compatible.
                None desativa function calling.
         enable_thinking: Liga o hybrid thinking mode do Qwen.
                          Use True em agentes de triagem e suporte clínico.
@@ -113,7 +146,7 @@ def chat(
         Exception: erro de API após 3 tentativas
     """
 
-    cliente = _obter_cliente()
+    cliente = _obter_cliente(backend)
 
     # Ajustar o max_tokens de acordo com o thinking mode
     if max_tokens is None:

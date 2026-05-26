@@ -60,37 +60,35 @@ class TestEstratificacaoDorToracica:
 
 
 class TestRiscoCardiovascularBasico:
-    """Caso para o classificador genérico, se diferente do estratificador."""
+    """Caso para o classificador genérico (Manchester simplificado)."""
 
     def test_pa_emergencia_hipertensiva(self):
-        """PA > 180x120 + sintoma neurológico = emergência."""
-        try:
-            from src.tools.classificador_risco import classificar_risco
-        except ImportError:
-            pytest.skip("classificador_risco.py não existe — usar estratificador")
-            return
+        """PA > 180x120 + sintoma neurológico = alto/crítico (vermelho)."""
+        from src.tools.classificador_risco import classificar_risco_clinico
 
-        resultado = classificar_risco(
-            pa_sistolica=195,
-            pa_diastolica=125,
-            sintomas=["cefaleia intensa", "visão turva"],
+        resultado = classificar_risco_clinico(
+            sintomas=["pa sistolica acima 180 com cefaleia", "alteracao visual"],
+            sinais_vitais={"pa_sistolica": 195, "fc": 95},
+            idade=58,
+            comorbidades=["hipertensao"],
         )
-        assert resultado["nivel"] == "alto"
+        # PAS=195 + red flag "pa sistolica acima 180 com cefaleia" -> red flag detectada
+        assert resultado["nivel"] in {"alto", "critico"}
+        assert resultado["manchester"] in {"vermelho", "laranja"}
 
     def test_pa_controlada_normal(self):
-        """PA dentro do alvo = baixo risco."""
-        try:
-            from src.tools.classificador_risco import classificar_risco
-        except ImportError:
-            pytest.skip("classificador_risco.py não existe — usar estratificador")
-            return
+        """PA dentro do alvo + sem sintomas = baixo risco (azul ou verde)."""
+        from src.tools.classificador_risco import classificar_risco_clinico
 
-        resultado = classificar_risco(
-            pa_sistolica=128,
-            pa_diastolica=82,
+        resultado = classificar_risco_clinico(
             sintomas=[],
+            sinais_vitais={"pa_sistolica": 128, "fc": 72, "spo2": 98},
+            idade=35,
+            comorbidades=[],
         )
-        assert resultado["nivel"] in {"baixo", "muito_baixo"}
+        # Sem sintomas + sinais vitais normais -> azul (orientação)
+        assert resultado["nivel"] == "baixo"
+        assert resultado["manchester"] in {"verde", "azul"}
 
 
 if __name__ == "__main__":

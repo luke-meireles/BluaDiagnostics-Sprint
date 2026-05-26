@@ -26,12 +26,37 @@ except ImportError:
 
 
 def _carregar_dotenv():
-    """Carrega .env se existir e python-dotenv estiver disponível."""
+    """Carrega .env se existir e python-dotenv estiver disponível.
+
+    Robusto a BOM UTF-8 (comum quando .env é criado pelo PowerShell
+    `Out-File -Encoding utf8` ou Notepad sem opção "Sem BOM"). Sem
+    essa proteção, a primeira chave do arquivo entra no os.environ
+    com nome `\\ufeffNOME_DA_CHAVE` em vez de `NOME_DA_CHAVE` — e o
+    `os.getenv("NOME_DA_CHAVE")` retorna None silenciosamente.
+    """
     if not _DOTENV_AVAILABLE:
         return
     env_path = Path(__file__).resolve().parent / ".env"
-    if env_path.exists():
-        load_dotenv(env_path)
+    if not env_path.exists():
+        return
+
+    # Detectar e remover BOM UTF-8 in-place (idempotente)
+    with open(env_path, "rb") as f:
+        head = f.read(3)
+    if head == b"\xef\xbb\xbf":
+        with open(env_path, "rb") as f:
+            conteudo = f.read()
+        with open(env_path, "wb") as f:
+            f.write(conteudo[3:])
+        print(
+            "[colab_setup] BOM UTF-8 removido do .env "
+            "(impedia python-dotenv de parsear a 1ª chave)."
+        )
+
+    # encoding="utf-8-sig" é defensa em profundidade: mesmo que o BOM
+    # tenha sido reintroduzido (ex: editor reabriu/salvou), o sig
+    # descarta sem erro.
+    load_dotenv(env_path, encoding="utf-8-sig")
 
 
 def _setup_langsmith() -> bool:
