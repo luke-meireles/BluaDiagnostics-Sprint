@@ -18,7 +18,7 @@ Conteudo entregue no repositorio:
 - prompts/agente_checkup.md, agente_triagem.md, agente_suporte_clinico.md, agente_safety.md
 - evals/sprint1_eval_set.json (15 casos: happy_path, red_flag, jailbreak, out_of_scope)
 - evals/run_evals.py (runner LLM-as-a-judge)
-- tools/tools_spec.json (5 tools com JSON Schema OpenAI/Anthropic-compatible)
+- tools/tools_spec.json (5 tools com JSON Schema OpenAI-compatible)
 - notebooks/sprint1_poc.ipynb (PoC executavel no Google Colab)
 - knowledge_base/ (9 documentos PT-BR para o RAG)
 - knowledge_base/cardiologia_*.md (estratificacao e apresentacoes atipicas — aprofundamento CV do Patch 2)

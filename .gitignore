@@ -46,8 +46,5 @@ Thumbs.db
 # Pasta de referência dos patches — não versionar
 _ref_bluadiagnostics/
 
-# Guia operacional interno — não versionar (mantido só localmente)
-CLAUDE.md
-
 # Backups da aplicacao da Sprint 2 (locais, nao versionar)
 _backup_sprint2/
