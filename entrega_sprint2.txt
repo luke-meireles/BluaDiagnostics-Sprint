@@ -1,0 +1,188 @@
+==========================================================================
+ENTREGA SPRINT 2 — BluaDiagnostics — Care Plus
+==========================================================================
+
+PROJETO: BluaDiagnostics — Assistente Cardiovascular Care Plus
+DISCIPLINA: Prompt Engineering & IA — FIAP
+SPRINT: 2 (sistema completo evoluindo a PoC da Sprint 1)
+
+INTEGRANTES:
+- Lucas Gabriel Alvarenga e Meireles    RM 567305
+- Gabriel Augusto da Silva               RM 567057
+- Leonardo Kenji Kubo Barboza            RM 567518
+- Lucas Koiti Uyeno de Souza             RM 568128
+- Lucas Morio Ikeda                      RM 567616
+
+REPOSITÓRIO GITHUB: https://github.com/luke-meireles/Prototype
+VÍDEO YOUTUBE (não listado): [PREENCHER URL]
+RELATÓRIO TÉCNICO: docs/relatorio_final.md
+
+==========================================================================
+COMO EXECUTAR
+==========================================================================
+
+Pré-requisitos: Python 3.10+, ~4GB RAM livre, DASHSCOPE_API_KEY ou Ollama.
+
+1. Clonar repositório e instalar dependências
+   git clone <repo>
+   cd BluaDiagnostics
+   pip install -r requirements.txt
+
+2. Configurar variáveis de ambiente
+   cp .env.example .env
+   # Editar .env com sua DASHSCOPE_API_KEY
+
+3. Popular ChromaDB com a knowledge base
+   bash scripts/index_kb.sh
+
+4. Iniciar a interface Dash (principal)
+   python app/dash_app.py
+   # Abre em http://localhost:8050
+
+   OU interface Streamlit (fallback)
+   streamlit run app/streamlit_app.py
+
+5. Rodar evals Sprint 2
+   python -m evals.run_evals_sprint2
+   # Gera evals/sprint2_results.json + gráficos em docs/figures/
+
+6. Rodar testes pytest
+   pytest tests/ -v
+
+==========================================================================
+SISTEMA — DESTAQUES
+==========================================================================
+
+ARQUITETURA:
+- 10 nós LangGraph (vs 7 na Sprint 1)
+- 5 agentes especializados (supervisor + checkup + triagem + suporte + prescricao)
+- 2 nós de proteção (pre_safety + safety dupla camada)
+- 1 nó determinístico de escalada (SAMU 192 / FAST AVC)
+- Memory truncation summarize-and-replace
+- Supervisor estatal (força triagem se RED_FLAG persistir)
+
+RAG:
+- ChromaDB persistente + embeddings multilingual-e5-large
+- MMR para diversidade contextual
+- Auto-RAG: reformulação clínica da query
+- Cross-encoder reranker ATIVO no agente Triagem
+- Filtro por categoria de metadado (red_flag, bula, protocolo, etc.)
+- 11 documentos cardiovasculares na knowledge base
+
+SAFETY:
+- Pre-safety regex (<10ms) — bloqueia jailbreak/OOS óbvios
+- Safety pós-resposta dupla camada (heurística + LLM auditor)
+- Tag inviolável [RASCUNHO_AGUARDANDO_REVISAO_MEDICA] em 4 camadas:
+  tool + prompt + safety check + critério de eval
+
+EVALS:
+- 32 casos cobrindo happy_path, red_flag (com apresentações atípicas),
+  jailbreak, out_of_scope, prescricao
+- LLM-as-judge automatizado
+- Métricas: acurácia por categoria, taxa escalada red_flag,
+  taxa tag rascunho prescricao, latência p50/p95, custo por agente
+- 4 iterações de prompt documentadas (v1 → v4) com tabelas comparativas
+
+INTERFACE:
+- Dash com painel técnico em tempo real (RAG, trajetória, tools, safety)
+- Confidence scoring numérico baseado em sinais reais
+- HITL síncrono via LangGraph interrupt_before
+- Indicador de backend (DashScope/Ollama) com troca via env var
+- Alerta sonoro em red flag (alert.wav)
+- Design system HUD clínico (CSS reutilizado do projeto cardiac_dashboard_dash)
+- Fallback Streamlit para garantia
+
+EXECUÇÃO TRI-MODAL:
+- DashScope qwen-plus (cloud, default, ~$0.001/turno)
+- Ollama qwen2.5:14b (on-prem, gratuito, narrativa LGPD)
+- Híbrido (alternância via .env)
+
+OBSERVABILIDADE (BÔNUS):
+- LangSmith integrado via 3 env vars (LANGCHAIN_TRACING_V2 etc.)
+- Traces aninhados visíveis: supervisor → rag → agente → tools → safety
+- Free tier 5000 traces/mês
+
+TESTES UNITÁRIOS (BÔNUS):
+- tests/test_classificador_risco.py
+- tests/test_estratificador_cardiovascular.py
+- tests/test_prescricao_tool.py (foco na tag inviolável)
+- tests/test_pre_safety.py
+
+==========================================================================
+NOVIDADES vs SPRINT 1
+==========================================================================
+
+ARQUIVOS NOVOS:
+- src/prompts.py (loader único)
+- src/agents/prescricao.py (5º especialista)
+- src/agents/pre_safety.py (filtro regex)
+- src/agents/escalada_humana.py (nó determinístico)
+- src/tools/prescricao.py (tag inviolável)
+- src/utils/memoria.py (summarize-and-replace)
+- prompts/agente_prescricao.md
+- prompts/agente_supervisor.md (renomeado de agente_router.md)
+- prompts/system_prompt_CHANGELOG.md
+- evals/run_evals_sprint2.py
+- evals/sprint2_eval_set.json (32 casos)
+- evals/sprint2_results.json (gerado)
+- app/dash_app.py (interface principal)
+- app/streamlit_app.py (fallback)
+- app/assets/style.css, blua_custom.css, alert.wav
+- tests/* (4 arquivos pytest)
+- docs/relatorio_final.md
+- docs/figures/*.png (gerados pelos evals)
+- scripts/index_kb.sh
+- knowledge_base/cardiologia_gravidez_pre_eclampsia.md
+- knowledge_base/cardiologia_jovens_atletas.md
+
+ARQUIVOS REFATORADOS:
+- src/graph.py (10 nós, EstadoBlua expandido, memory truncation)
+- src/agents/{checkup,triagem,suporte,router,safety}.py
+- src/rag/{indexer,retriever,reranker}.py (MMR, Auto-RAG, filtros)
+- data/mocks/perfis_clinicos.json (+ BENEF-MARIA)
+- tools/tools_spec.json (+ sugerir_rascunho_prescricao)
+- colab_setup.py (+ LangSmith bootstrap)
+- requirements.txt (+ dash, dash-bootstrap-components, langsmith, pytest)
+- .env.example (+ LLM_BACKEND, LANGSMITH_API_KEY)
+- ollama/README.md (nota Ollama >= 0.3.0)
+
+==========================================================================
+CHECKLIST DE PRÉ-ENTREGA
+==========================================================================
+
+[ ] git log limpo de API keys (verificar com grep -iE 'sk-[a-z0-9]{20,}')
+[ ] Vídeo YouTube visibilidade "Não listado" (não Privado, não Público)
+[ ] Repositório público OU privado com email do professor adicionado
+[ ] sprint2_results.json gerado pelo runner (não fabricado à mão)
+[ ] docs/figures/*.png presentes (3 gráficos)
+[ ] docs/relatorio_final.md com números reais preenchidos (não placeholders)
+[ ] README.md atualizado com seção Sprint 2
+[ ] Notebook: typo "Sprint 3 PoC" corrigido para "Sprint 1 — PoC"
+[ ] Suite pytest passando: pytest tests/ -v
+[ ] Smoke test do grafo: python -c "from src.graph import construir_grafo; construir_grafo()"
+
+==========================================================================
+LINKS IMPORTANTES
+==========================================================================
+
+Documentação técnica completa: docs/relatorio_final.md
+Histórico de iterações de prompt: prompts/system_prompt_CHANGELOG.md
+Resultados quantitativos: evals/sprint2_results.json
+Gráficos: docs/figures/
+Knowledge base completa: knowledge_base/*.md
+
+==========================================================================
+ESCOPO E LIMITAÇÕES
+==========================================================================
+
+O BluaDiagnostics opera EXCLUSIVAMENTE em escopo cardiovascular. Esta é
+uma decisão de design (segurança > generalidade) implementada em 4 camadas:
+pre_safety, prompts dos agentes, lista branca da tool de prescrição, e
+critérios de eval. Pedidos fora do escopo são polidamente recusados com
+redirecionamento ao canal de clínica geral Care Plus.
+
+O sistema NÃO substitui avaliação médica humana. Em emergências reais,
+o usuário deve ligar para o SAMU (192). A tag inviolável de prescrição
+garante que rascunhos nunca virem prescrição válida sem revisão médica.
+
+==========================================================================

@@ -1,67 +1,101 @@
-# Configuração on-prem do BluaDiagnostics com Ollama
+# Ollama — Modo Local (LGPD)
 
-> **Importante**: o projeto BluaDiagnostics foi escrito **para o Google
-> Colab**. Esta pasta documenta o modo on-prem (Ollama) apenas como
-> **alternativa fora do Colab** — clientes corporativos com isolamento
-> total ou ambientes de contingência. **Não funciona no Colab gratuito**
-> porque o runtime não suporta servidor Ollama persistente.
-
-Esta pasta contém o `Modelfile` que materializa a Configuração B (on-prem)
-do BluaDiagnostics: o mesmo Qwen 9B servido localmente via
-[Ollama](https://ollama.com), com o system prompt principal embutido.
-
-## Por que on-prem?
-
-A Care Plus opera sob LGPD e atende beneficiários cujo histórico clínico é
-dado sensível. Em ambientes que exigem **isolamento total** (servidor da
-operadora, datacenter brasileiro, sem tráfego externo), o Ollama serve a
-mesma família Qwen sem chamadas a APIs externas. Trade-off: latência maior
-e necessidade de GPU local. Mais detalhes em [`/docs/deployment_modes.md`](../docs/deployment_modes.md).
+> Modo de execução on-premise do BluaDiagnostics. Justifica narrativa LGPD
+> e permite operação sem chamadas a serviços externos.
 
 ## Pré-requisitos
 
-- Ollama instalado (versão ≥ 0.3.0).
-- GPU com pelo menos 12 GB de VRAM recomendada para qwen:9b. Em CPU,
-  funciona, porém com latência elevada.
+- **Ollama ≥ 0.3.0** ⚠️ Versões anteriores **NÃO suportam** function calling.
+  Verificar: `ollama --version`
+- Modelo: `qwen2.5:14b-instruct` (recomendado) ou `qwen2.5:7b-instruct` (CPU)
+- Memória: 16GB RAM para 14b, 8GB para 7b
 
-## Setup
-
-```bash
-# 1. Baixe o modelo base
-ollama pull qwen:9b
-
-# 2. Crie a variante BluaDiagnostics com o system prompt embutido
-ollama create blua-qwen -f Modelfile
-
-# 3. Teste interativo
-ollama run blua-qwen "Olá, estou com dor de cabeça leve há dois dias."
-```
-
-## Apontando o BluaDiagnostics ao Ollama
-
-Defina as variáveis de ambiente:
+## Instalação
 
 ```bash
-export OLLAMA_BASE_URL=http://localhost:11434/v1
-export QWEN_OLLAMA_MODEL=blua-qwen   # ou qwen:9b se preferir
+# Linux/macOS
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Windows: baixar instalador em https://ollama.com/download
+
+# Verificar versão (precisa ser >= 0.3.0)
+ollama --version
 ```
 
-E no código consumidor, chame `chat(..., backend="ollama")` ou use
-`OllamaClient()` em vez do `QwenClient()`.
-
-## Limitações conhecidas
-
-- O Ollama local não suporta `enable_thinking=True` da mesma forma que a
-  DashScope. Para a Sprint 1, o agente de Triagem cai em modo non-thinking
-  quando o backend é Ollama — o impacto é menor porque o RAG e a heurística
-  determinística de risco já fazem o trabalho pesado.
-- Function calling em modo OpenAI-compatible no Ollama precisa de versão
-  recente. Em caso de erro, atualizar o Ollama e reverificar.
-
-## Como verificar a integração
+## Baixar o modelo
 
 ```bash
-python -c "from src.llm.qwen_client import chat; print(chat([{'role':'user','content':'oi'}], backend='ollama'))"
+# Modelo recomendado (9GB)
+ollama pull qwen2.5:14b-instruct
+
+# Alternativa para máquinas menos potentes (4.7GB)
+ollama pull qwen2.5:7b-instruct
 ```
 
-Se retornar dicionário com `content` preenchido, está tudo certo.
+## Configurar BluaDiagnostics
+
+Editar `.env`:
+
+```bash
+LLM_BACKEND=ollama
+QWEN_OLLAMA_MODEL=qwen2.5:14b-instruct
+OLLAMA_BASE_URL=http://localhost:11434
+```
+
+Ou criar arquivo `Modelfile` customizado (variante "blua-qwen"):
+
+```dockerfile
+FROM qwen2.5:14b-instruct
+
+PARAMETER temperature 0.3
+PARAMETER top_p 0.9
+
+SYSTEM """
+Você é o BluaDiagnostics — assistente cardiovascular Care Plus.
+Especialização cardiovascular estrita. Nunca emite diagnóstico definitivo.
+"""
+```
+
+Criar a variante:
+```bash
+ollama create blua-qwen -f ollama/Modelfile
+```
+
+E em `.env`: `QWEN_OLLAMA_MODEL=blua-qwen`
+
+## Executar
+
+```bash
+# Rodar Ollama em background (Linux)
+ollama serve &
+
+# Em outro terminal, rodar BluaDiagnostics
+python app/dash_app.py
+```
+
+## Latência esperada
+
+| Hardware | Modelo | Latência por turno |
+|---|---|---|
+| GPU RTX 3060+ | qwen2.5:14b | ~3-5s |
+| CPU moderno (i7+) | qwen2.5:14b | ~10-15s |
+| CPU básico | qwen2.5:7b | ~12-20s |
+| Mac M1/M2/M3 | qwen2.5:14b | ~5-8s |
+
+## Narrativa LGPD para o vídeo
+
+> "Em produção real Care Plus, este sistema rodaria com Ollama on-premise:
+> nenhum dado clínico de paciente sai da máquina, atendendo plenamente os
+> Artigos 7º, 11 e 18 da LGPD. A demonstração em DashScope é apenas para
+> velocidade de iteração acadêmica."
+
+## Troubleshooting
+
+**Erro: "tool_choice not supported"**
+→ Ollama < 0.3.0. Atualize com `curl -fsSL https://ollama.com/install.sh | sh`.
+
+**Resposta muito lenta**
+→ Trocar para qwen2.5:7b (mais leve) ou liberar GPU.
+
+**Modelo não responde**
+→ Verificar se Ollama está rodando: `ollama list`. Reiniciar: `ollama serve`.

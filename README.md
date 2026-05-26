@@ -1,411 +1,227 @@
-<!--
-  README.md — BluaDiagnostics
-  Care Plus | Plataforma Blua
-  Sprint 1 — PoC Acadêmica FIAP
-  Versão: 1.0.0 | 2026-05-15
--->
+# BluaDiagnostics — Care Plus
 
-# BluaDiagnostics
+> Assistente cardiovascular digital · LangGraph multi-agente · RAG · LGPD-ready
+> **Sprint 2** — Sistema completo evoluindo a PoC da Sprint 1
 
-> **Assistente clínico digital especializado em saúde cardiovascular**
-> da Care Plus — chatbot multi-agente em Português Brasileiro nativo,
-> integrado ao app Blua, que conduz check-up digital conversacional,
-> analisa ritmo cardíaco via modelo de Machine Learning e apoia
-> prescrição remota assistida (sempre com aprovação médica humana).
-> Sprint 1 de PoC acadêmica FIAP.
->
-> **Projeto Colab-first**: o ponto de entrada canônico é o notebook
-> [`notebooks/sprint1_poc.ipynb`](notebooks/sprint1_poc.ipynb),
-> executado no Google Colab.
+[![Sprint](https://img.shields.io/badge/Sprint-2-blue)](docs/relatorio_final.md)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 ---
 
-## Integrantes
+## O que é
 
-- Lucas Gabriel Alvarenga e Meireles — RM 567305
-- Gabriel Augusto da Silva — RM 567057
-- Leonardo Kenji Kubo Barboza — RM 567518
-- Lucas Koiti Uyeno de Souza — RM 568128
-- Lucas Morio Ikeda — RM 567616
+BluaDiagnostics é um sub-app do **Blua** (plataforma da operadora Care Plus) que automatiza dois fluxos clínicos cardiovasculares:
 
----
+1. **Check-up cardiovascular conversacional** — coleta sinais vitais, analisa wearable, agenda teleconsulta
+2. **Rascunho de prescrição pós-teleconsulta com revisão médica humana (HITL)**
 
-## Persona escolhida e justificativa
-
-**Persona principal**: beneficiário Care Plus em autoavaliação —
-paciente leigo realizando check-up digital cardiovascular ou
-triagem de sintomas cardíacos.
-
-**Foco clínico**: saúde cardiovascular e sistema circulatório
-exclusivamente. Qualquer condição fora desse escopo é
-redirecionada para o canal adequado da Care Plus.
-
-**Justificativa da persona:**
-
-A Care Plus possui mais de 600 mil beneficiários no Brasil.
-Doenças cardiovasculares são a principal causa de morte no país
-(SBC, 2025). O beneficiário leigo em autoavaliação é o público
-de maior volume e maior risco — um check-up digital cardiovascular
-bem conduzido reduz tempo de diagnóstico, previne eventos agudos
-e melhora o NPS do app Blua.
-
-**Justificativa do foco cardiovascular:**
-
-A especialização foi uma decisão técnica e de segurança. Um
-agente especializado em cardiovascular tem base de conhecimento
-mais precisa, guardrails mais objetivos e menor risco de
-alucinação clínica do que um agente generalista. Além disso,
-integra diretamente o modelo de Machine Learning de detecção
-de arritmias desenvolvido pelo grupo — conectando dois trabalhos
-acadêmicos num sistema coeso.
-
-### Aprofundamento clínico (Patch 2)
-
-Dentro do escopo cardiovascular, o BluaDiagnostics ganhou
-**profundidade reforçada** em apresentações de risco que comumente
-escapam de triagens superficiais:
-
-- Tool `estratificar_dor_toracica` (HEART score simplificado, sem
-  ECG/troponina) acionada em toda queixa torácica e em equivalentes
-  anginosos.
-- Base de conhecimento dedicada: `cardiologia_estratificacao_risco.md`
-  e `cardiologia_apresentacoes_atipicas.md`.
-- Atenção sistemática a **apresentações atípicas** de SCA em mulheres
-  pós-menopausa, diabéticos e idosos (até 30% das SCAs nesse grupo
-  podem se manifestar sem dor torácica clássica).
-- Diferenciais não-coronarianos sempre considerados em dor torácica
-  aguda (dissecção aórtica, embolia pulmonar, tamponamento cardíaco,
-  pneumotórax hipertensivo, miocardite).
-- 3 perfis mock CV variados (IC com FE reduzida, FA paroxística,
-  angina microvascular) e 6 casos de eval cobrindo típico, atípico,
-  jovem com dor pleurítica, FA com síncope, crise hipertensiva sem
-  sintoma e dissecção aórtica.
-
----
-
-## Stack técnica
-
-| Camada | Tecnologia |
-|---|---|
-| Ambiente de execução | **Google Colab** (Python 3.11, CPU runtime gratuito) |
-| LLM principal | Qwen (`qwen-plus` via DashScope International) |
-| Modelo de ML | Detecção de arritmias por janela deslizante de IBI — integrado via tool `analisar_ritmo_cardiaco` |
-| SDK | `openai` Python (Qwen é OpenAI-compatible) + `qwen-agent` (demo) |
-| Orquestração multi-agente | LangGraph (`StateGraph` + `MemorySaver`) |
-| RAG | `langchain-text-splitters` + ChromaDB + `intfloat/multilingual-e5-large` |
-| Memória curto prazo | LangGraph `MemorySaver` |
-| Memória longo prazo | JSON estruturado por `beneficiario_id` |
-| Validação | Pydantic v2 |
-| Logging estruturado | `structlog` (output JSON em `logs/`) |
-| Avaliação | LLM-as-a-judge com Qwen — 22 casos cardiovasculares (16 originais + 6 do Patch 2) |
-| Segredos | **Google Colab Secrets** (preferencial) ou `python-dotenv` local |
+Especialização cardiovascular **estrita** — pedidos fora do escopo são polidamente recusados e redirecionados.
 
 ---
 
 ## Arquitetura
 
-Arquitetura completa em [`docs/arquitetura_mermaid.md`](docs/arquitetura_mermaid.md)
-e [`docs/arquitetura.png`](docs/arquitetura.png).
-
-```mermaid
-flowchart TD
-
-%% =========================
-%% Entrada
-%% =========================
-
-A[Beneficiário Care Plus] --> B[Roteador<br/>thinking=OFF]
-
-%% =========================
-%% Intenções
-%% =========================
-
-B --> C1[intent: check-up]
-B --> C2[intent: sintoma agudo]
-B --> C3[intent: medicação]
-B --> C4[intent: fora de escopo]
-
-%% =========================
-%% Fluxos principais
-%% =========================
-
-C1 --> D1[Agente de Check-up<br/>thinking=OFF]
-C2 --> D2[Agente de Triagem<br/>thinking=ON]
-C3 --> D3[Agente de Suporte Clínico<br/>thinking=ON]
-C4 --> D4[Fora de Escopo]
-
-%% =========================
-%% Fora de escopo
-%% =========================
-
-D4 --> D5[Redireciona Care Plus]
-
-%% =========================
-%% Ferramentas do Check-up
-%% =========================
-
-D1 --> T1[consultar_historico_paciente]
-D1 --> T2[consultar_sinais_vitais_wearable]
-D1 --> T3[analisar_ritmo_cardiaco<br/>mockado Sprint 1]
-
-%% =========================
-%% Ferramentas clínicas
-%% =========================
-
-D2 --> T4[agendar_teleconsulta]
-D2 --> T6[classificar_risco_clinico<br/>Manchester simplificado]
-D2 --> T7[estratificar_dor_toracica<br/>HEART simplificado — Patch 2]
-D3 --> T5[verificar_interacoes_medicamentosas]
-
-%% =========================
-%% Base de conhecimento
-%% =========================
-
-KB[(ChromaDB<br/>KB Cardiovascular SBC)]
-
-D1 -. consulta .-> KB
-D2 -. consulta .-> KB
-D3 -. consulta .-> KB
-
-%% =========================
-%% Safety Layer
-%% =========================
-
-SL[Safety Layer<br/>Guardrails clínicos]
-
-D1 --> SL
-D2 --> SL
-D3 --> SL
-
-%% =========================
-%% Red flags
-%% =========================
-
-SL --> RF{Red flag detectada?}
-
-RF -->|Sim| EM[SAMU 192<br/>ou Teleconsulta urgente]
-RF -->|Não| FN[Fluxo normal]
-
-%% =========================
-%% Saída
-%% =========================
-
-FN --> LOG[Audit Log<br/>structlog JSON]
-
-LOG --> RESP[Resposta ao beneficiário<br/>+ disclaimer obrigatório]
-
-EM --> RESP
-```
-
-**Quatro agentes especializados**: Roteador → (Check-up |
-Triagem | Suporte Clínico | Fora-de-escopo) → Safety Layer
-→ Audit Log, com `thread_id` preservando memória multi-turno.
-
-**Diferencial**: o Agente de Check-up integra o modelo de ML
-de detecção de arritmias via tool `analisar_ritmo_cardiaco`,
-recebendo 6 atributos calculados a partir do IBI e retornando
-classificação `regular` ou `irregular`.
-
----
-
-## Comparação de modelos: Qwen vs Llama 3.3 70B
-
-Detalhes completos em [`docs/decisao_modelo.md`](docs/decisao_modelo.md).
-
-### Critérios obrigatórios
-
-| Critério | Qwen qwen-plus (escolhido) | Llama 3.3 70B |
-|---|---|---|
-| **Latência** | ~800ms via DashScope cloud | >60s em CPU — GPU T4 necessária |
-| **Custo** | Gratuito — 1M tokens/90 dias free trial DashScope | Gratuito — mas exige GPU paga no Colab ou Groq com risco LGPD |
-| **Privacidade / LGPD** | Dado transita pelo DashScope Internacional. Mitigação: modo Ollama on-prem disponível | Groq: dado transita fora do Brasil. On-prem: resolve LGPD mas inviável no Colab gratuito |
-| **Qualidade clínica** | IFBench 76,5 — instruction following superior, PT-BR nativo, 201 idiomas | IFBench ~71 — bom, sem foco clínico em português |
-
-### Critérios técnicos adicionais
-
-| Critério | Qwen | Llama 3.3 70B |
-|---|---|---|
-| Lançamento | 2025–2026 | Dez/2024 |
-| Function calling | Nativo OpenAI-compatible | Suportado, mais reescrita |
-| Hybrid thinking mode | Sim — toggle por agente | Não |
-| Contexto | Até 1M tokens | 128K tokens |
-| Licença | Apache 2.0 | Llama Community License |
-| Disponibilidade Colab CPU | Sim — inferência em cloud | Não — exige GPU |
-
-### Decisão: Qwen
-
-1. **Instruction following (IFBench 76,5)** — crítico para
-   guardrails clínicos respeitarem restrições invioláveis.
-2. **PT-BR nativo** — reduz alucinação terminológica em bulas
-   e protocolos da SBC.
-3. **Hybrid thinking mode** — `thinking=ON` nos agentes de
-   triagem e suporte, `thinking=OFF` no roteador.
-4. **Compatível com Colab CPU** — inferência em cloud sem GPU.
-5. **Apache 2.0** — sem restrições comerciais.
-
-**Risco LGPD documentado**: dados transitam pelo DashScope
-Internacional. Mitigação na Sprint 1: dados mockados sem PII
-real. Mitigação no projeto final: modo Ollama on-prem com
-Qwen 14B+ rodando em servidor local.
-
----
-
-## Modos de deployment (apenas uma demonstração)
-
-| Modo | Quando usar | Backend |
-|---|---|---|
-| **A — Cloud DashScope** (padrão Colab) | Sprint 1 — PoC | `qwen-plus` em `dashscope-intl.aliyuncs.com` |
-| **B — On-prem Ollama** (projeto final) | Isolamento total, LGPD, produção | `qwen:14b` em `localhost:11434` |
-
-Troca via parâmetro: `chat(..., backend="dashscope" or "ollama")`.
-**No Colab, use sempre `dashscope`**.
-
----
-
-## Mapeamento de riscos clínicos e LGPD
-
-| Risco | Origem | Mitigação |
-|---|---|---|
-| Alucinação clínica | LLM gera fato falso sobre condição cardiovascular | RAG com KB cardiovascular curada + Safety Layer + disclaimer obrigatório |
-| Viés algorítmico | Treino do modelo com dados não representativos | Lógica determinística em `classificar_risco_clinico`; auditoria periódica |
-| LGPD art. 7º/11/18 | Dado clínico em cloud | Dados mockados na Sprint 1; Ollama on-prem no projeto final |
-| Responsabilidade sobre prescrição (CFM Res. 2.314/22) | Conduta farmacológica sem médico | Agente nunca emite receita; tag `[RASCUNHO_AGUARDANDO_REVISAO_MEDICA]`; aprovação médica obrigatória |
-| Atrasar emergência | Triagem digital substituindo SAMU | Red flag → SAMU 192 imediato, sem coleta adicional |
-| Overtrust | Confiança excessiva no assistente | Disclaimer obrigatório; linguagem probabilística; recusa de diagnóstico |
-| Jailbreak por autoridade | Usuário alega ser médico | Restrição independente de autodeclaração — escopo não muda |
-
----
-
-## Como rodar a PoC no Google Colab
-
-### Pré-requisitos
-
-- Conta Google.
-- Chave **DashScope International**
-  (<https://bailian.console.alibabacloud.com>) com **Model
-  Studio** ativado (1 milhão de tokens grátis por 90 dias).
-- Repositório disponível no GitHub ou `.zip` para upload.
-
-### Passo a passo
-
-1. **Suba o projeto ao Colab**:
-   - **GitHub**: edite `REPO_URL` na Seção 1.1 do notebook.
-   - **Upload manual**: `!unzip bluadiagnostics.zip -d /content/`
-
-2. **Configure o Colab Secret**:
-   - Ícone 🔑 → **+ Add new secret**
-   - Name: `DASHSCOPE_API_KEY` | Value: sua chave
-   - Habilite **Notebook access**
-
-2.5. **Passos antes de rodar o notebook:
-    -Ao abrir o notebook clique em arquivo -> Abrir notebook -> github -> digitar a URL do diretório e escolher o .ipynb
-    -Verifique as pastas. Se não houver uma pasta chamada BluaDiagnostics-sprint. Crie uma célula inicial com !git clone URL DO        REPOSITORIO
-     -Se ainda não for anteriormente ao !git ponha %cd /content
-3. **Execute `notebooks/sprint1_poc.ipynb`** em ordem:
-   - Seção 1: instala deps (~3 min), carrega secret
-   - Seção 2: baixa embeddings (~1 GB), indexa KB cardiovascular
-   - Seções 3–6: valida tools, Qwen wrapper e grafo LangGraph
-   - Seções 7–12: 6 demos clínicas cardiovasculares
-   - Seção 13: eval set (22 casos) com LLM-as-a-judge
-
-### Solução de problemas
-
-| Erro | Causa | Como resolver |
-|---|---|---|
-| `DASHSCOPE_API_KEY não encontrada` | Secret sem Notebook access | Reabra 🔑 e habilite Notebook access |
-| `403 AccessDenied.Unpurchased` | Model Studio não ativado | Ative em bailian.console.alibabacloud.com |
-| `401 Unauthorized` | Chave inválida ou expirada | Gere nova chave no Bailian Console |
-| `ModuleNotFoundError` após restart | Runtime desconectado | Re-execute Seção 1 |
-| `429 quota / rate limit` | Free trial atingiu RPM | Aguarde alguns segundos |
-
----
-
-## Estrutura de pastas
+**10 nós LangGraph** (vs 7 na Sprint 1):
 
 ```
-BluaDiagnostics-Sprint/
-├── README.md
-├── CLAUDE.md                 # guia operacional do projeto
-├── .env.example              # referência para uso local (Colab usa Secrets)
-├── .gitignore
-├── requirements.txt          # deps Colab-friendly
-├── colab_setup.py            # bootstrap idempotente do notebook
-├── main.py                   # CLI fina (local e !python no Colab)
-├── entrega_sprint1.txt       # checklist de entrega Sprint 1
-│
-├── docs/
-│   ├── arquitetura.png
-│   ├── arquitetura_mermaid.md
-│   ├── decisao_modelo.md     # ADR: Qwen vs Llama 3.3 70B
-│   └── deployment_modes.md   # ADR: DashScope vs Ollama on-prem
-│
-├── prompts/                  # system_prompt.md + 5 sub-prompts (.md)
-│   ├── system_prompt.md
-│   ├── agente_router.md
-│   ├── agente_checkup.md
-│   ├── agente_triagem.md
-│   ├── agente_suporte_clinico.md
-│   └── agente_safety.md
-│
-├── knowledge_base/           # 10 documentos PT-BR para o RAG
-│   ├── anti_coagulante_bula_resumida.md
-│   ├── anti_hipertensivos_bula_resumida.md
-│   ├── cartilha_beneficiario_saude_cardiaca.md
-│   ├── diretrizes_sbc_hipertensao_arritmia.md
-│   ├── politicas_care_plus_telemedicina.md
-│   ├── protocolo_triagem_cardiovascular.md
-│   ├── red_flags_cardiovasculares.md
-│   ├── cardiologia_estratificacao_risco.md     # Patch 2
-│   ├── cardiologia_apresentacoes_atipicas.md   # Patch 2
-│   └── mapa_especialidades.md                  # Patch 2 (granularidade CV)
-│
+Usuário → Pre-Safety → Supervisor (estatal)
+            ↓
+   ┌────────┼─────────┬─────────┬──────────┬──────────┐
+   ↓        ↓         ↓         ↓          ↓          ↓
+Checkup  Triagem   Suporte  Prescrição  Escalada  ForaEscopo
+           +Rerank    +RAG    +HITL     +SAMU
+   └────────┴─────────┴─────────┴──────────┴──────────┘
+                        ↓
+                Safety dupla camada
+                        ↓
+            Saída (audit + truncagem)
+                        ↓
+                     Usuário
+```
+
+5 agentes especializados + 2 nós de proteção + 1 nó determinístico de escalada.
+
+Ver `docs/relatorio_final.md` para diagrama Mermaid completo e justificativa de cada decisão.
+
+---
+
+## Modos de execução
+
+O BluaDiagnostics é **tri-modal**:
+
+| Modo | Quando | Custo | Privacidade |
+|---|---|---|---|
+| **DashScope** (cloud, default) | Demos rápidas, evals | ~$0.001/turno | Externa |
+| **Ollama** (local) | Produção LGPD-ready | $0 | On-prem |
+| **Híbrido** | Alternância | — | — |
+
+Troca de modo via uma linha no `.env`:
+
+```bash
+LLM_BACKEND=dashscope    # ou: ollama
+```
+
+---
+
+## Quickstart
+
+```bash
+# 1. Clonar e instalar
+git clone <repo>
+cd BluaDiagnostics
+pip install -r requirements.txt
+
+# 2. Configurar
+cp .env.example .env
+# Editar .env: DASHSCOPE_API_KEY=sk-xxx
+
+# 3. Popular ChromaDB (uma vez, ~85 chunks de 11 documentos)
+bash scripts/index_kb.sh
+
+# 4. Iniciar interface Dash (principal)
+python app/dash_app.py
+# Abre em http://localhost:8050
+
+# Alternativa: Streamlit (fallback)
+streamlit run app/streamlit_app.py
+
+# 5. Rodar evals (gera sprint2_results.json + gráficos)
+python -m evals.run_evals_sprint2
+
+# 6. Rodar testes
+pytest tests/ -v
+```
+
+---
+
+## Sprint 2 — O que mudou
+
+### Funcionalidades
+
+| Área | Sprint 1 | Sprint 2 |
+|---|---|---|
+| **Interface** | CLI + Notebook | **Dash** + Streamlit fallback |
+| **Agentes** | 4 | **5** (+ Prescrição) |
+| **Nós LangGraph** | 7 | **10** (+ pre_safety, prescricao, escalada_humana) |
+| **Supervisor** | Classificador estático | **Estatal** (força triagem se RED_FLAG persistir) |
+| **Safety** | Heurística regex | **Dupla camada** (heurística + LLM auditor) |
+| **RAG** | Similarity search | **MMR + Auto-RAG + Reranker + filtros por categoria** |
+| **Memória** | Cumula indefinidamente | **Summarize-and-replace** após 6 turnos |
+| **Confidence scoring** | — | **Numérico** baseado em RAG + intent + tools |
+| **HITL** | — | **Síncrono** via `interrupt_before` |
+| **Observabilidade** | Audit log local | **+ LangSmith** integrado |
+| **Evals** | 22 casos | **32 casos** (+ apresentações atípicas + prescrição) |
+| **Testes** | — | **4 arquivos pytest** |
+
+### Apresentações atípicas (Patch 2)
+
+Knowledge base expandida com:
+- `cardiologia_gravidez_pre_eclampsia.md` (cardiomiopatia periparto, pré-eclâmpsia)
+- `cardiologia_jovens_atletas.md` (CMH, síncope em jovens, síndromes de pré-excitação)
+
+Casos de eval cobrindo: Síndrome de Takotsubo, IAM atípico em diabético, dissecção aórtica, TEP em jovem.
+
+---
+
+## Estrutura
+
+```
+src/
+├── prompts.py                # loader único de prompts .md
+├── graph.py                  # LangGraph 10 nós (refatorado Sprint 2)
+├── agents/
+│   ├── router.py             # supervisor estatal
+│   ├── pre_safety.py         # NOVO — regex jailbreak/OOS
+│   ├── checkup.py            # refatorado — RAG detalhado
+│   ├── triagem.py            # refatorado — Reranker ATIVO
+│   ├── suporte.py            # refatorado
+│   ├── prescricao.py         # NOVO — 5º especialista
+│   ├── escalada_humana.py    # NOVO — SAMU/FAST
+│   └── safety.py             # refatorado — dupla camada
+├── rag/
+│   ├── indexer.py            # + metadado categoria
+│   ├── retriever.py          # + MMR + Auto-RAG + filtros
+│   └── reranker.py           # ATIVO no Triagem
 ├── tools/
-│   └── tools_spec.json       # 6 tools (JSON Schema OpenAI/Anthropic-compatible)
-│
-├── data/
-│   └── mocks/                # perfis_clinicos, agendamentos, interacoes, wearable
-│
-├── evals/
-│   ├── sprint1_eval_set.json # 22 casos (happy_path, red_flag, jailbreak, OOS, CV)
-│   └── run_evals.py          # runner LLM-as-a-judge
-│
-├── notebooks/
-│   └── sprint1_poc.ipynb     # PoC interativa Colab (13 seções)
-│
-├── ollama/                   # Configuração B — on-prem
-│   ├── Modelfile             # variante blua-qwen com system prompt embutido
-│   └── README.md             # instruções de pull/create
-│
-├── logs/                     # audit log JSON estruturado (gitignored)
-│
-└── src/
-    ├── llm/
-    │   ├── qwen_client.py    # chat() + classe QwenClient + _modelo_padrao(backend)
-    │   └── ollama_client.py  # wrapper OO sobre QwenClient(backend="ollama")
-    ├── agents/               # router, checkup, triagem, suporte, safety
-    ├── tools/
-    │   ├── historico.py
-    │   ├── agendamento.py
-    │   ├── interacoes.py
-    │   ├── ritmo.py                          # analisar_ritmo_cardiaco (mock ML)
-    │   ├── wearable.py                       # consultar_sinais_vitais_wearable
-    │   ├── classificador_risco.py            # Manchester simplificado
-    │   └── estratificador_cardiovascular.py  # HEART simplificado — Patch 2
-    ├── rag/
-    │   ├── indexer.py        # ChromaDB + multilingual-e5-large
-    │   ├── retriever.py
-    │   └── reranker.py       # interface pluggável (no-op default na PoC)
-    ├── graph.py              # StateGraph LangGraph (roteador → 4 agentes → safety → saida)
-    └── audit_log.py          # logging JSON estruturado
+│   ├── prescricao.py         # NOVO — tag inviolável
+│   └── ... (tools Sprint 1)
+└── utils/
+    └── memoria.py            # NOVO — summarize-and-replace
+
+app/
+├── dash_app.py               # interface principal (Sprint 2)
+├── streamlit_app.py          # fallback
+└── assets/
+    ├── style.css             # design system HUD
+    ├── blua_custom.css       # customizações Blua
+    └── alert.wav             # som red flag
+
+prompts/                      # 6 prompts em Markdown + CHANGELOG
+evals/                        # 32 casos + runner + resultados
+tests/                        # 4 arquivos pytest
+docs/                         # relatório técnico + figuras
+knowledge_base/               # 11 documentos cardiovasculares
+scripts/                      # index_kb.sh
+ollama/                       # Modelfile + README on-prem
 ```
 
-### Resumo numérico
+---
 
-| Item | Quantidade |
+## Observabilidade
+
+Para ativar LangSmith (3 env vars, free tier 5k traces/mês):
+
+```bash
+# .env
+LANGSMITH_API_KEY=ls__xxx
+LANGSMITH_PROJECT=BluaDiagnostics-Sprint2
+```
+
+LangGraph instrumenta automaticamente. Traces aninhados visíveis:
+`pre_safety → supervisor → rag_retrieve → triagem → tools → safety`.
+
+Para narrativa LGPD em produção, considerar **LangFuse self-hosted** no mesmo perímetro do Ollama.
+
+---
+
+## Demonstração
+
+Vídeo (5 min): **[link YouTube unlisted]**
+
+Roteiro:
+- 0:00–0:30 — Arquitetura
+- 0:30–1:30 — Happy path Maria (PDF Sprint 2)
+- 1:30–2:15 — Red flag → escalada SAMU automática
+- 2:15–3:00 — Prescrição com HITL síncrono
+- 3:00–3:30 — Jailbreak duplo (pre_safety + safety auditor)
+- 3:30–4:00 — Traces LangSmith
+- 4:00–4:45 — **Troca para Ollama on-prem ao vivo** (narrativa LGPD)
+- 4:45–5:00 — Métricas finais
+
+---
+
+## Equipe
+
+| Nome | RM |
 |---|---|
-| Sub-prompts (`.md` em `prompts/`) | 1 system + 5 sub-prompts |
-| Documentos da knowledge base | 10 (7 originais + 3 do Patch 2) |
-| Tools registradas em `tools_spec.json` | 6 |
-| Mocks JSON | 4 (perfis, agendamentos, interações, wearable) |
-| Casos de eval | 22 (happy_path 6 + red_flag 8 + jailbreak 5 + out_of_scope 3) |
-| Nós no `StateGraph` | 7 (roteador, checkup, triagem, suporte, fora_escopo, safety, saida) |
+| Lucas Gabriel Alvarenga e Meireles | 567305 |
+| Gabriel Augusto da Silva | 567057 |
+| Leonardo Kenji Kubo Barboza | 567518 |
+| Lucas Koiti Uyeno de Souza | 568128 |
+| Lucas Morio Ikeda | 567616 |
+
+---
+
+## Limitações e Roadmap
+
+Modelo de ML real de detecção de arritmias do grupo (de outra disciplina) NÃO está integrado nesta entrega — fica como roadmap. A tool `analisar_ritmo_cardiaco` atual usa regra determinística.
+
+Ver `docs/relatorio_final.md` seções 5 e 6 para limitações e roadmap completos.
+
+---
+
+## Disclaimer
+
+⚕️ Este sistema é um trabalho acadêmico e **não substitui avaliação médica**. Em emergências, ligue **192 (SAMU)**.
+
+Mocks de pacientes são fictícios — não há dados reais de pessoas no repositório.
