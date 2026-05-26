@@ -1,7 +1,7 @@
 # BluaDiagnostics — dependências Sprint 2
 
-# --- LLM e SDK Qwen (DashScope OpenAI-compatible) ---
-openai>=1.50.0
+# --- SDK Qwen (cliente HTTP via DashScope) ---
+openai>=1.50.0  # cliente HTTP genérico usado pelo SDK do DashScope
 
 # --- Orquestração multi-agente ---
 langgraph>=0.2.50

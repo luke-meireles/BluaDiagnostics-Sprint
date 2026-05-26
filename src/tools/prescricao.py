@@ -205,7 +205,7 @@ def sugerir_rascunho_prescricao(
         "data_geracao_rascunho": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "approved_by_medico": False,
         "aviso_legal": (
-            "Este rascunho é gerado por IA como suporte ao fluxo de prescrição. "
+            "Este rascunho é apoio à decisão clínica no fluxo de prescrição. "
             "Resolução CFM 2.314/22: aprovação e assinatura por médico habilitado "
             "são obrigatórias antes de qualquer dispensação. O BluaDiagnostics "
             "não substitui a decisão clínica humana."

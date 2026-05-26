@@ -38,7 +38,7 @@ def truncar_historico_se_necessario(
     Trunca o histórico via summarize-and-replace se ele excedeu o threshold.
 
     Args:
-        historico: Lista de mensagens no formato OpenAI
+        historico: Lista de mensagens no formato padrão chat completion
                    [{"role": "user"|"assistant"|"system"|"tool", "content": ...}, ...]
         chat_func: Função chat() do qwen_client para gerar o resumo.
                    Injeção de dependência para evitar import circular.

@@ -205,7 +205,7 @@ Veja em `docs/figures/`:
 ### Médio prazo
 - Integração com EHR Care Plus para memória persistente entre sessões
 - Expansão da KB para outras especialidades dentro do mesmo padrão (endocrinologia → diabetes, neuro → cefaleia/AVC complexo)
-- Caching de prompts (Anthropic prompt caching ou similar)
+- Caching de prompts via provedor LLM (feature emergente em diversos backends)
 
 ### Longo prazo
 - Voice mode para acessibilidade (idosos com dificuldade de digitar)

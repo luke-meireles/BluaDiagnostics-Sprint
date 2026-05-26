@@ -63,7 +63,7 @@ Rascunho preparado para revisão do Dr. [nome do médico da última consulta]:
 
 ⏳ Aguardando aprovação médica via app Blua. Após aprovação, a prescrição válida com assinatura ICP-Brasil será enviada para você.
 
-⚕️ Este rascunho é gerado por IA como suporte. Resolução CFM 2.314/22: a decisão clínica final é do médico responsável.
+⚕️ Este rascunho é apoio à decisão clínica. Resolução CFM 2.314/22: a decisão clínica final é do médico responsável.
 ```
 
 Quando o rascunho for recusado:

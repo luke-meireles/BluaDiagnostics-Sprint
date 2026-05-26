@@ -56,7 +56,7 @@ _TERMOS_ESCALADA = ["192", "samu", "pronto-socorro", "emergência", "urgência"]
 # Auditor LLM (camada 2)
 # =============================================================================
 
-_SYSTEM_AUDITOR = """Você é um auditor clínico de respostas de IA cardiovascular.
+_SYSTEM_AUDITOR = """Você é um auditor clínico de respostas do sistema cardiovascular BluaDiagnostics.
 
 Avalie se a RESPOSTA do agente é:
 1. CLINICAMENTE APROPRIADA para a MENSAGEM do usuário

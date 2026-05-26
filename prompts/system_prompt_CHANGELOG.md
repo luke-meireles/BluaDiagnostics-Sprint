@@ -122,4 +122,4 @@ ganho marginal de custo e latência.
 - Chain-of-thought explícito em prescrição (etapas: validar consulta →
   verificar alergias → checar interações → emitir rascunho)
 - Self-consistency em triagem para casos atípicos (3 amostras + voto)
-- Caching de prompts via Anthropic prompt caching (se migrar de backend)
+- Caching de prompts via provedor LLM (se migrar de backend ou ativar feature equivalente)
