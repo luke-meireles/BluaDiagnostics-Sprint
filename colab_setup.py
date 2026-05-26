@@ -1,17 +1,15 @@
 """
-Bootstrap do ambiente para Google Colab e execução local.
+Bootstrap de ambiente — Sprint 2.
 
+Configura:
+- Chaves de API (DashScope, opcionalmente Ollama, LangSmith)
+- Path do projeto
+- Variáveis para hybrid thinking
+- LangSmith para observabilidade (se LANGSMITH_API_KEY estiver setada)
 
-Responsabilidades:
-- Localizar a raiz do projeto
-- Configurar sys.path para imports de src/
-- Carregar DASHSCOPE_API_KEY (Colab Secrets → .env)
-- Criar diretórios necessários (logs/, chroma_db/)
-- Validar dependências críticas
-
-Uso no notebook (primeira célula):
+Uso:
     from colab_setup import preparar_ambiente
-    preparar_ambiente()
+    preparar_ambiente(exigir_chave=True)
 """
 
 from __future__ import annotations
@@ -19,151 +17,99 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
-from typing import Any
+
+try:
+    from dotenv import load_dotenv
+    _DOTENV_AVAILABLE = True
+except ImportError:
+    _DOTENV_AVAILABLE = False
 
 
-# ----------------------------------------------------------------
-# Detecção de ambiente
-# ----------------------------------------------------------------
+def _carregar_dotenv():
+    """Carrega .env se existir e python-dotenv estiver disponível."""
+    if not _DOTENV_AVAILABLE:
+        return
+    env_path = Path(__file__).resolve().parent / ".env"
+    if env_path.exists():
+        load_dotenv(env_path)
 
-def em_colab() -> bool:
-    """Retorna True se executando no Google Colab."""
-    try:
-        import google.colab # type: ignore (type:ignore suprime o aviso de type checker no vscode) # noqa: F401 (suprime o aviso de import não utilizado)
-        return True
-    except ImportError:
+
+def _setup_langsmith() -> bool:
+    """
+    Ativa observabilidade LangSmith se LANGSMITH_API_KEY estiver configurada.
+
+    LangSmith instrumenta LangGraph automaticamente — sem código novo.
+    Free tier: 5000 traces/mês.
+    """
+    api_key = os.getenv("LANGSMITH_API_KEY")
+    if not api_key:
         return False
 
-
-# ----------------------------------------------------------------
-# Localização da raiz do projeto
-# ----------------------------------------------------------------
-
-def _localizar_raiz() -> Path:
-    """
-    Localiza a raiz do projeto BluaDiagnostics.
-    Tenta em ordem: arquivo atual → CWD → /content/bluadiagnostics.
-    """
-    # Diretório do próprio colab_setup.py
-    aqui = Path(__file__).resolve().parent
-    if (aqui / "src" / "graph.py").exists():
-        return aqui
-
-    # CWD e ancestrais
-    for candidato in [Path.cwd(), *Path.cwd().parents]:
-        if (candidato / "src" / "graph.py").exists():
-            return candidato
-
-    # Fallback para Colab
-    if em_colab():
-        destino = Path("/content/bluadiagnostics")
-        if (destino / "src" / "graph.py").exists():
-            return destino
-
-    raise FileNotFoundError(
-        "Raiz do projeto não encontrada. "
-        "Certifique-se de que o projeto está em /content/bluadiagnostics "
-        "ou execute colab_setup.py a partir da raiz do projeto."
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    os.environ["LANGCHAIN_API_KEY"] = api_key
+    os.environ["LANGCHAIN_PROJECT"] = os.getenv(
+        "LANGSMITH_PROJECT", "BluaDiagnostics-Sprint2"
     )
+    return True
 
 
-# ----------------------------------------------------------------
-# Carregamento da chave DashScope
-# ----------------------------------------------------------------
-
-def _carregar_chave() -> str | None:
-    """
-    Resolve DASHSCOPE_API_KEY em ordem de prioridade:
-    1. Variável de ambiente já definida
-    2. Colab Secrets (ambiente Colab)
-    3. Arquivo .env (ambiente local)
-    """
-    # 1. Variável de ambiente
-    chave = os.getenv("DASHSCOPE_API_KEY")
-    if chave:
-        return chave
-
-    # 2. Colab Secrets
-    if em_colab():
-        try:
-            from google.colab import userdata  # type: ignore
-            chave = userdata.get("DASHSCOPE_API_KEY")
-            if chave:
-                os.environ["DASHSCOPE_API_KEY"] = chave
-                return chave
-        except Exception:
-            pass
-
-    # 3. Arquivo .env local
+def _try_colab_secrets():
+    """Tenta carregar chaves do Colab Secrets se rodando no Colab."""
     try:
-        from dotenv import load_dotenv  # type: ignore
-        load_dotenv(override=False)
-        return os.getenv("DASHSCOPE_API_KEY")
+        from google.colab import userdata  # type: ignore
+        for key in ["DASHSCOPE_API_KEY", "LANGSMITH_API_KEY"]:
+            if not os.getenv(key):
+                try:
+                    val = userdata.get(key)
+                    if val:
+                        os.environ[key] = val
+                        print(f"[colab_setup] {key} carregada de Colab Secrets")
+                except Exception:
+                    pass
     except ImportError:
-        return None
+        pass  # Não estamos no Colab
 
 
-# ----------------------------------------------------------------
-# Função principal
-# ----------------------------------------------------------------
-
-def preparar_ambiente(exigir_chave: bool = True) -> dict[str, Any]:
+def preparar_ambiente(exigir_chave: bool = True) -> dict:
     """
-    Prepara o ambiente BluaDiagnostics de forma idempotente.
+    Prepara o ambiente para execução do BluaDiagnostics.
 
     Args:
-        exigir_chave: Se True, lança RuntimeError quando
-                      DASHSCOPE_API_KEY não for encontrada.
-                      Use False apenas para --help ou testes secos.
+        exigir_chave: Se True, levanta RuntimeError quando DASHSCOPE_API_KEY
+                      não está configurada E backend é dashscope.
 
     Returns:
-        Diagnóstico do ambiente configurado.
+        Dicionário com status do bootstrap.
     """
-    # Localizar raiz e configurar sys.path
-    raiz = _localizar_raiz()
-
+    raiz = Path(__file__).resolve().parent
     if str(raiz) not in sys.path:
         sys.path.insert(0, str(raiz))
 
-    os.chdir(raiz)
+    _carregar_dotenv()
+    _try_colab_secrets()
 
-    # Definir modelo padrão
-    os.environ.setdefault("QWEN_DASHSCOPE_MODEL", "qwen-plus")
+    backend = os.getenv("LLM_BACKEND", "dashscope")
 
-    # Criar diretórios necessários
-    (raiz / "logs").mkdir(parents=True, exist_ok=True)
+    if backend == "dashscope":
+        chave = os.getenv("DASHSCOPE_API_KEY")
+        if not chave and exigir_chave:
+            raise RuntimeError(
+                "DASHSCOPE_API_KEY não configurada. "
+                "Defina via .env, Colab Secrets ou variável de ambiente. "
+                "Alternativa: defina LLM_BACKEND=ollama para uso local."
+            )
 
-    chroma_dir = Path(
-        os.getenv("CHROMA_PERSIST_DIR", str(raiz / "chroma_db"))
-    )
-    chroma_dir.mkdir(parents=True, exist_ok=True)
+    langsmith_ativo = _setup_langsmith()
 
-    # Carregar chave
-    chave = _carregar_chave()
+    print(f"[colab_setup] Ambiente preparado")
+    print(f"  Backend LLM: {backend}")
+    if langsmith_ativo:
+        print(f"  LangSmith: ATIVO (projeto: {os.getenv('LANGCHAIN_PROJECT')})")
+    else:
+        print(f"  LangSmith: desativado (sem LANGSMITH_API_KEY)")
 
-    if exigir_chave and not chave:
-        raise RuntimeError(
-            "DASHSCOPE_API_KEY não encontrada.\n"
-            "No Colab: adicione em Secrets (ícone 🔑) com "
-            "Notebook access habilitado.\n"
-            "Local: crie um arquivo .env com DASHSCOPE_API_KEY=sua_chave."
-        )
-
-    diagnostico = {
-        "ambiente": "colab" if em_colab() else "local",
-        "raiz_projeto": str(raiz),
-        "chave_carregada": bool(chave),
-        "modelo": os.environ.get("QWEN_DASHSCOPE_MODEL"),
-        "python": sys.version.split()[0],
-        "chroma_dir": str(chroma_dir),
-        "logs_dir": str(raiz / "logs"),
+    return {
+        "backend": backend,
+        "langsmith_ativo": langsmith_ativo,
+        "raiz": str(raiz),
     }
-
-    print("[colab_setup] Ambiente preparado:")
-    for k, v in diagnostico.items():
-        print(f"  {k}: {v}")
-
-    return diagnostico
-
-
-__all__ = ["preparar_ambiente", "em_colab"]
