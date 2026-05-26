@@ -1,9 +1,6 @@
 """
-Agente de Suporte Clínico Cardiovascular
-Verifica interações medicamentosas e consulta histórico.
-thinking=ON — raciocínio cuidadoso em contexto medicamentoso.
-
-REFATORADO Sprint 2: system prompt agora carregado de prompts/agente_suporte_clinico.md
+Agente de Suporte Clínico — Sprint 2.
+Filtro RAG: bula + protocolo + politica_care_plus.
 """
 
 from __future__ import annotations
@@ -18,7 +15,7 @@ from src.tools import (
     verificar_interacoes_medicamentosas,
     agendar_teleconsulta,
 )
-from src.rag import recuperar_contexto
+from src.rag import recuperar_contexto_detalhado
 
 _TOOLS_SPEC_PATH = Path(__file__).resolve().parents[2] / "tools" / "tools_spec.json"
 _TOOLS_SPEC = json.loads(_TOOLS_SPEC_PATH.read_text(encoding="utf-8"))
@@ -33,7 +30,6 @@ _TOOLS_SUPORTE = [
     }
 ]
 
-# System prompt agora vem do arquivo prompts/agente_suporte_clinico.md
 SYSTEM_PROMPT_SUPORTE = carregar_prompt("agente_suporte_clinico")
 
 
@@ -55,14 +51,18 @@ def _executar_tool(nome: str, argumentos: dict) -> str:
 def agente_suporte_clinico(
     mensagem: str,
     historico: list[dict],
-    beneficiario_id: str = "BENEF-001",
+    beneficiario_id: str = "BENEF-MARIA",
 ) -> dict:
-    """
-    Executa o agente de suporte clínico cardiovascular.
-    """
     system = SYSTEM_PROMPT_SUPORTE + f"\n\nBENEFICIÁRIO ATIVO: {beneficiario_id}"
 
-    contexto_rag = recuperar_contexto(mensagem, n_resultados=3)
+    contexto_rag, documentos_rag = recuperar_contexto_detalhado(
+        query=mensagem,
+        n_resultados=3,
+        filtro_categoria=["bula", "protocolo", "politica_care_plus"],
+        usar_mmr=True,
+        usar_auto_rag=True,
+        usar_reranker=False,
+    )
     if contexto_rag:
         system += f"\n\n{contexto_rag}"
 
@@ -81,7 +81,6 @@ def agente_suporte_clinico(
         for tc in resposta["tool_calls"]:
             nome = tc["name"]
             argumentos = json.loads(tc["arguments"])
-
             print(f"[suporte] Chamando tool: {nome}({argumentos})")
             resultado = _executar_tool(nome, argumentos)
             tools_chamadas.append({"tool": nome, "resultado": resultado})
@@ -112,6 +111,7 @@ def agente_suporte_clinico(
         "resposta": resposta["content"],
         "agente": "suporte_clinico",
         "tools_chamadas": tools_chamadas,
+        "documentos_rag": documentos_rag,
         "thinking": resposta.get("thinking"),
         "usage": resposta["usage"],
     }

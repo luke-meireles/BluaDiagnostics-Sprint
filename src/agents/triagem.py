@@ -1,9 +1,10 @@
 """
-Agente de Triagem Cardiovascular
-Avalia sintomas agudos, classifica risco e escala se necessário.
-thinking=ON — raciocínio mais profundo para red flags.
+Agente de Triagem Cardiovascular — Sprint 2.
 
-REFATORADO Sprint 2: system prompt agora carregado de prompts/agente_triagem.md
+Mudanças vs Lote 1:
+- Usa recuperar_contexto_detalhado.
+- Filtro: red_flag + apresentacao_atipica + estratificacao + protocolo.
+- Reranker ATIVO (precisão > latência em casos clínicos críticos).
 """
 
 from __future__ import annotations
@@ -13,8 +14,8 @@ from pathlib import Path
 
 from src.llm.qwen_client import chat, formatar_mensagens, TEMPERATURA_RACIOCINIO
 from src.prompts import carregar_prompt
-from src.tools import consultar_historico_paciente, agendar_teleconsulta
-from src.rag import recuperar_contexto
+from src.tools import consultar_historico_paciente, agendar_teleconsulta, estratificar_dor_toracica
+from src.rag import recuperar_contexto_detalhado
 
 _TOOLS_SPEC_PATH = Path(__file__).resolve().parents[2] / "tools" / "tools_spec.json"
 _TOOLS_SPEC = json.loads(_TOOLS_SPEC_PATH.read_text(encoding="utf-8"))
@@ -22,10 +23,10 @@ _TOOLS_SPEC = json.loads(_TOOLS_SPEC_PATH.read_text(encoding="utf-8"))
 _TOOLS_TRIAGEM = [
     {"type": "function", "function": t}
     for t in _TOOLS_SPEC
-    if t["name"] in {"consultar_historico_paciente", "agendar_teleconsulta"}
+    if t["name"] in {"consultar_historico_paciente", "agendar_teleconsulta",
+                     "estratificar_dor_toracica"}
 ]
 
-# System prompt agora vem do arquivo prompts/agente_triagem.md
 SYSTEM_PROMPT_TRIAGEM = carregar_prompt("agente_triagem")
 
 
@@ -33,6 +34,7 @@ def _executar_tool(nome: str, argumentos: dict) -> str:
     mapa = {
         "consultar_historico_paciente": consultar_historico_paciente,
         "agendar_teleconsulta": agendar_teleconsulta,
+        "estratificar_dor_toracica": estratificar_dor_toracica,
     }
     func = mapa.get(nome)
     if not func:
@@ -46,15 +48,20 @@ def _executar_tool(nome: str, argumentos: dict) -> str:
 def agente_triagem(
     mensagem: str,
     historico: list[dict],
-    beneficiario_id: str = "BENEF-001",
+    beneficiario_id: str = "BENEF-MARIA",
 ) -> dict:
-    """
-    Executa o agente de triagem cardiovascular.
-    """
     system = SYSTEM_PROMPT_TRIAGEM + f"\n\nBENEFICIÁRIO ATIVO: {beneficiario_id}"
 
-    # RAG com foco em red flags e protocolo de triagem
-    contexto_rag = recuperar_contexto(mensagem, n_resultados=3)
+    # RAG com reranker ATIVO + filtro em red_flag e apresentações atípicas
+    contexto_rag, documentos_rag = recuperar_contexto_detalhado(
+        query=mensagem,
+        n_resultados=4,
+        filtro_categoria=["red_flag", "apresentacao_atipica",
+                          "estratificacao", "protocolo"],
+        usar_mmr=True,
+        usar_auto_rag=True,
+        usar_reranker=True,  # ⚡ ATIVO em triagem
+    )
     if contexto_rag:
         system += f"\n\n{contexto_rag}"
 
@@ -73,7 +80,6 @@ def agente_triagem(
         for tc in resposta["tool_calls"]:
             nome = tc["name"]
             argumentos = json.loads(tc["arguments"])
-
             print(f"[triagem] Chamando tool: {nome}({argumentos})")
             resultado = _executar_tool(nome, argumentos)
             tools_chamadas.append({"tool": nome, "resultado": resultado})
@@ -104,6 +110,7 @@ def agente_triagem(
         "resposta": resposta["content"],
         "agente": "triagem",
         "tools_chamadas": tools_chamadas,
+        "documentos_rag": documentos_rag,
         "thinking": resposta.get("thinking"),
         "usage": resposta["usage"],
     }

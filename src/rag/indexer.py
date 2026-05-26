@@ -1,71 +1,86 @@
 """
-Indexação da knowledge base cardiovascular no ChromaDB.
+Indexação da knowledge base cardiovascular no ChromaDB — Sprint 2.
 
-Responsabilidades:
-- Carregar os 7 documentos da knowledge_base/
-- Dividir em chunks via RecursiveCharacterTextSplitter
-- Gerar embeddings com multilingual-e5-large
-- Persistir no ChromaDB local
+Evoluções vs Sprint 1:
+- Adiciona metadado 'categoria' a cada chunk para filtro por tipo
+  (red_flag, bula, protocolo, politica_care_plus, estratificacao,
+  apresentacao_atipica, cartilha, especialidades)
+- Permite que agentes especialistas filtrem chunks por categoria relevante
 
 Uso:
     from src.rag import indexar_knowledge_base
-    indexar_knowledge_base()  # executar uma vez por sessão do Colab
+    indexar_knowledge_base()
 """
 
 from __future__ import annotations
+
 import os
 from pathlib import Path
+
 from chromadb import PersistentClient
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # Configurações
 
-# Diretório da knowledge base
 KB_DIR = Path(__file__).resolve().parents[2] / "knowledge_base"
 
-# Diretório de persistência do ChromaDB
 CHROMA_DIR = Path(
-    os.getenv("CHROMA_PERSIST_DIR", str(Path(__file__).resolve().parents[2] / "chroma_db"))
+    os.getenv("CHROMA_PERSIST_DIR",
+              str(Path(__file__).resolve().parents[2] / "chroma_db"))
 )
 
-# Nome da coleção ChromaDB
 COLECAO_NOME = "bluadiagnostics_cardiovascular"
-
-# Modelo de embeddings - multilingual, suporta PT-BR nativamente
 MODELO_EMBEDDINGS = "intfloat/multilingual-e5-large"
 
-# Configuração do splitter (divisor)
-CHUNK_SIZE = 800     # caracteres por chunk (bloco: divisão de um grande volume de dados em partes menores e mais gerenciáveis)
-CHUNK_OVERLAP = 100  # sobreposição entre chunks para manter contexto
+CHUNK_SIZE = 800
+CHUNK_OVERLAP = 100
 
-# Funções
+# Mapeamento de nome de arquivo → categoria do chunk
+# Permite filtrar buscas RAG por tipo de documento
+_MAPA_CATEGORIA = {
+    "red_flags_cardiovasculares.md": "red_flag",
+    "protocolo_triagem_cardiovascular.md": "protocolo",
+    "diretrizes_sbc_hipertensao_arritmia.md": "protocolo",
+    "anti_hipertensivos_bula_resumida.md": "bula",
+    "anti_coagulante_bula_resumida.md": "bula",
+    "politicas_care_plus_telemedicina.md": "politica_care_plus",
+    "cartilha_beneficiario_saude_cardiaca.md": "cartilha",
+    "cardiologia_estratificacao_risco.md": "estratificacao",
+    "cardiologia_apresentacoes_atipicas.md": "apresentacao_atipica",
+    "cardiologia_gravidez_pre_eclampsia.md": "apresentacao_atipica",
+    "cardiologia_jovens_atletas.md": "apresentacao_atipica",
+    "mapa_especialidades.md": "especialidades",
+}
 
-def _carregar_documentos () -> list[dict]:
-    """
-    Carrega todos os arquivos .md da knowledge_base/.
-    Retorna lista de dicionários com conteúdo e metadados.
-    """
+
+def _categoria_do_arquivo(nome_arquivo: str) -> str:
+    """Retorna a categoria do chunk baseado no nome do arquivo fonte."""
+    return _MAPA_CATEGORIA.get(nome_arquivo, "geral")
+
+
+def _carregar_documentos() -> list[dict]:
+    """Carrega todos os arquivos .md da knowledge_base/."""
     documentos = []
     for arquivo in sorted(KB_DIR.glob("*.md")):
-        conteudo = arquivo.read_text(encoding= "utf-8")
+        conteudo = arquivo.read_text(encoding="utf-8")
         documentos.append({
             "conteudo": conteudo,
             "fonte": arquivo.name,
-            "titulo": arquivo.stem.replace("_", " ").title()
+            "titulo": arquivo.stem.replace("_", " ").title(),
+            "categoria": _categoria_do_arquivo(arquivo.name),
         })
-        print(f" [indexer] Carregado: {arquivo.name} ({len(conteudo)} chars)")
+        print(f"[indexer] Carregado: {arquivo.name} "
+              f"({len(conteudo)} chars, categoria={_categoria_do_arquivo(arquivo.name)})")
     return documentos
 
+
 def _dividir_chunks(documentos: list[dict]) -> tuple[list[str], list[dict]]:
-    """
-    Divide documentos em chunks menores para indexação.
-    Retorna textos e metadados correspondentes.
-    """
+    """Divide documentos em chunks com metadados estruturados."""
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size = CHUNK_SIZE,
-        chunk_overlap = CHUNK_OVERLAP,
-        separators= ["\n## ", "\n### ", "\n\n", "\n", " "]
+        chunk_size=CHUNK_SIZE,
+        chunk_overlap=CHUNK_OVERLAP,
+        separators=["\n## ", "\n### ", "\n\n", "\n", " "]
     )
 
     textos = []
@@ -75,17 +90,17 @@ def _dividir_chunks(documentos: list[dict]) -> tuple[list[str], list[dict]]:
         chunks = splitter.split_text(doc["conteudo"])
 
         for i, chunk in enumerate(chunks):
-            # Texto do chunk
             textos.append(chunk)
-
-            # Metadados do chunk
             metadados.append({
                 "fonte": doc["fonte"],
                 "titulo": doc["titulo"],
+                "categoria": doc["categoria"],
                 "chunk_index": i,
-                "total_chunks": len(chunks)
+                "total_chunks": len(chunks),
             })
+
     return textos, metadados
+
 
 def indexar_knowledge_base(forcar_reindexacao: bool = False) -> int:
     """
@@ -98,30 +113,25 @@ def indexar_knowledge_base(forcar_reindexacao: bool = False) -> int:
     Returns:
         Número total de chunks indexados.
     """
-    print("[indexer] Iniciando a indexação da knowledge_base cardiovascular...")
+    print("[indexer] Iniciando indexação da knowledge_base cardiovascular...")
 
-    # Criar diretório do ChromaDB se não existir
     CHROMA_DIR.mkdir(parents=True, exist_ok=True)
-
-    # Instanciar cliente ChromaDB persistente
     cliente = PersistentClient(path=str(CHROMA_DIR))
 
-    # Verificar se coleção já existe e tem dados
     colecoes_existentes = [c.name for c in cliente.list_collections()]
 
     if COLECAO_NOME in colecoes_existentes and not forcar_reindexacao:
         colecao = cliente.get_collection(COLECAO_NOME)
         total = colecao.count()
         if total > 0:
-            print(f"[indexer] Coleção já indexada com {total} chunks." f"\nUse forcar_indexacao = True para reindexar.")
+            print(f"[indexer] Coleção já indexada com {total} chunks. "
+                  f"Use forcar_reindexacao=True para reindexar.")
             return total
-        
-    # Recriar coleção se forçado
+
     if COLECAO_NOME in colecoes_existentes and forcar_reindexacao:
         cliente.delete_collection(COLECAO_NOME)
         print("[indexer] Coleção anterior removida.")
 
-    # Criar coleção com função de embeddings
     print(f"[indexer] Carregando modelo de embeddings: {MODELO_EMBEDDINGS}")
     embedding_fn = SentenceTransformerEmbeddingFunction(
         model_name=MODELO_EMBEDDINGS
@@ -130,20 +140,17 @@ def indexar_knowledge_base(forcar_reindexacao: bool = False) -> int:
     colecao = cliente.create_collection(
         name=COLECAO_NOME,
         embedding_function=embedding_fn,
-        metadata={"descricao": "Knowledge base cardiovascular BluaDiagnostics"}
+        metadata={"descricao": "Knowledge base cardiovascular BluaDiagnostics Sprint 2"}
     )
 
-    # Carregar e dividir documentos
     print("[indexer] Carregando documentos...")
     documentos = _carregar_documentos()
 
     print("[indexer] Dividindo em chunks...")
     textos, metadados = _dividir_chunks(documentos)
 
-    # Gerar IDs únicos para cada chunk
     ids = [f"chunk_{i:04d}" for i in range(len(textos))]
 
-    # Indexar no ChromaDB em lotes de 100
     LOTE = 100
     for inicio in range(0, len(textos), LOTE):
         fim = min(inicio + LOTE, len(textos))
@@ -152,7 +159,13 @@ def indexar_knowledge_base(forcar_reindexacao: bool = False) -> int:
             metadatas=metadados[inicio:fim],
             ids=ids[inicio:fim]
         )
-        print(f"[indexer] Indexado lote {inicio}–{fim} de {len(textos)}")
+        print(f"[indexer] Indexado lote {inicio}-{fim} de {len(textos)}")
 
     print(f"[indexer] Concluído — {len(textos)} chunks indexados em {CHROMA_DIR}")
+
+    # Estatísticas por categoria
+    from collections import Counter
+    cats = Counter(m["categoria"] for m in metadados)
+    print(f"[indexer] Distribuição por categoria: {dict(cats)}")
+
     return len(textos)

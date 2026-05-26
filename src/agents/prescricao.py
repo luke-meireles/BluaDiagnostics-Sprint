@@ -1,9 +1,9 @@
 """
-Agente de Prescrição Cardiovascular
-Quinto especialista do BluaDiagnostics, exigido pela Sprint 2.
+Agente de Prescrição Cardiovascular — Sprint 2.
 
-Gera rascunhos de prescrição pós-teleconsulta — sempre com HITL.
-thinking=ON — raciocínio clínico cuidadoso.
+Mudanças vs Lote 1:
+- Usa recuperar_contexto_detalhado.
+- Filtro: bula + protocolo + politica_care_plus (foco em info farmacológica).
 """
 
 from __future__ import annotations
@@ -18,9 +18,8 @@ from src.tools import (
     verificar_interacoes_medicamentosas,
     sugerir_rascunho_prescricao,
 )
-from src.rag import recuperar_contexto
+from src.rag import recuperar_contexto_detalhado
 
-# Tools spec — carrega só as relevantes para este agente
 _TOOLS_SPEC_PATH = Path(__file__).resolve().parents[2] / "tools" / "tools_spec.json"
 _TOOLS_SPEC = json.loads(_TOOLS_SPEC_PATH.read_text(encoding="utf-8"))
 
@@ -34,12 +33,10 @@ _TOOLS_PRESCRICAO = [
     }
 ]
 
-# System prompt carregado do .md — eliminando hard-coding
 SYSTEM_PROMPT_PRESCRICAO = carregar_prompt("agente_prescricao")
 
 
 def _executar_tool(nome: str, argumentos: dict) -> str:
-    """Executa a tool solicitada e retorna resultado como string JSON."""
     mapa = {
         "consultar_historico_paciente": consultar_historico_paciente,
         "verificar_interacoes_medicamentosas": verificar_interacoes_medicamentosas,
@@ -49,8 +46,7 @@ def _executar_tool(nome: str, argumentos: dict) -> str:
     if not func:
         return json.dumps({"erro": f"Tool '{nome}' não encontrada."})
     try:
-        resultado = func(**argumentos)
-        return json.dumps(resultado, ensure_ascii=False)
+        return json.dumps(func(**argumentos), ensure_ascii=False)
     except Exception as exc:
         return json.dumps({"erro": str(exc)})
 
@@ -58,25 +54,18 @@ def _executar_tool(nome: str, argumentos: dict) -> str:
 def agente_prescricao(
     mensagem: str,
     historico: list[dict],
-    beneficiario_id: str = "BENEF-001",
+    beneficiario_id: str = "BENEF-MARIA",
 ) -> dict:
-    """
-    Executa o agente de prescrição cardiovascular.
-
-    Args:
-        mensagem: Mensagem atual do usuário.
-        historico: Histórico de turnos anteriores.
-        beneficiario_id: ID do beneficiário mockado.
-
-    Returns:
-        Dicionário com resposta, tools chamadas, metadados e flag
-        'requer_aprovacao_humana' para o nó HITL do grafo.
-    """
-    # Injetar contexto do beneficiário
     system = SYSTEM_PROMPT_PRESCRICAO + f"\n\nBENEFICIÁRIO ATIVO: {beneficiario_id}"
 
-    # RAG com foco em bulas e protocolos — categoria-friendly para o filtro futuro
-    contexto_rag = recuperar_contexto(mensagem, n_resultados=3)
+    contexto_rag, documentos_rag = recuperar_contexto_detalhado(
+        query=mensagem,
+        n_resultados=3,
+        filtro_categoria=["bula", "protocolo", "politica_care_plus"],
+        usar_mmr=True,
+        usar_auto_rag=True,
+        usar_reranker=False,
+    )
     if contexto_rag:
         system += f"\n\n{contexto_rag}"
 
@@ -86,7 +75,7 @@ def agente_prescricao(
         messages=mensagens,
         tools=_TOOLS_PRESCRICAO,
         enable_thinking=True,
-        temperature=TEMPERATURA_PADRAO,  # 0.3 — baixa, prescrição é determinística
+        temperature=TEMPERATURA_PADRAO,
     )
 
     tools_chamadas = []
@@ -96,18 +85,15 @@ def agente_prescricao(
         for tc in resposta["tool_calls"]:
             nome = tc["name"]
             argumentos = json.loads(tc["arguments"])
-
             print(f"[prescricao] Chamando tool: {nome}({argumentos})")
             resultado_str = _executar_tool(nome, argumentos)
             tools_chamadas.append({"tool": nome, "resultado": resultado_str})
 
-            # Detectar emissão de rascunho — ativa flag HITL para o grafo
             if nome == "sugerir_rascunho_prescricao":
                 try:
-                    resultado_dict = json.loads(resultado_str)
-                    if resultado_dict.get("status") == "RASCUNHO_AGUARDANDO_REVISAO_MEDICA":
+                    if "RASCUNHO_AGUARDANDO_REVISAO_MEDICA" in resultado_str:
                         rascunho_emitido = True
-                except json.JSONDecodeError:
+                except Exception:
                     pass
 
             mensagens.append({
@@ -136,6 +122,7 @@ def agente_prescricao(
         "resposta": resposta["content"],
         "agente": "prescricao",
         "tools_chamadas": tools_chamadas,
+        "documentos_rag": documentos_rag,
         "thinking": resposta.get("thinking"),
         "usage": resposta["usage"],
         "requer_aprovacao_humana": rascunho_emitido,
