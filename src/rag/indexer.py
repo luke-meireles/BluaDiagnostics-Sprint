@@ -8,8 +8,13 @@ Evoluções vs Sprint 1:
 - Permite que agentes especialistas filtrem chunks por categoria relevante
 
 Uso:
+    # Via import:
     from src.rag import indexar_knowledge_base
     indexar_knowledge_base()
+
+    # Via CLI:
+    python -m src.rag.indexer            # indexa apenas se vazio
+    python -m src.rag.indexer --force    # recria do zero
 """
 
 from __future__ import annotations
@@ -169,3 +174,13 @@ def indexar_knowledge_base(forcar_reindexacao: bool = False) -> int:
     print(f"[indexer] Distribuição por categoria: {dict(cats)}")
 
     return len(textos)
+
+
+# Entrypoint CLI — permite `python -m src.rag.indexer [--force]`
+# Nota: o pacote `src.rag.__init__` importa este módulo, então rodar via
+# `-m` dispara um RuntimeWarning cosmético do runpy. Indexação ocorre
+# normalmente apesar do warning.
+if __name__ == "__main__":
+    import sys
+    forcar = "--force" in sys.argv or "-f" in sys.argv
+    indexar_knowledge_base(forcar_reindexacao=forcar)
