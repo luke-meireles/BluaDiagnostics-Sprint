@@ -60,6 +60,38 @@ def _obter_colecao():
     return _COLECAO
 
 
+_TERMOS_CLINICOS_COMUNS = frozenset({
+    "hipertensao", "hipertensão", "pressao", "pressão", "infarto",
+    "angina", "isquemia", "arritmia", "taquicardia", "bradicardia",
+    "dispneia", "dispneia", "edema", "sincope", "síncope", "palpitacao",
+    "palpitação", "anticoagulante", "betabloqueador", "estatina",
+    "losartana", "enalapril", "atenolol", "captopril", "varfarina",
+    "fibrilacao", "fibrilação", "insuficiencia", "insuficiência",
+    "cardiovascular", "coronariano", "miocardio", "miocárdio",
+    "trombose", "embolia", "aterosclerose", "marcapasso", "stent",
+})
+
+
+def _query_ja_clinica(mensagem: str) -> bool:
+    """Heuristica: ja contem termos clinicos suficientes? Pula reformulacao.
+
+    Reformular custa ~2-3s por turno (chamada LLM). Se a query do usuario
+    ja vem com vocabulario clinico ou e muito curta (3 palavras ou menos),
+    o ganho da reformulacao e marginal e nao vale o custo.
+    """
+    msg_lower = mensagem.lower()
+    palavras = msg_lower.split()
+
+    # Query muito curta: reformular pode ate degradar (ex: "renovar receita"
+    # vira "prescricao medicamentosa renovacao" — quase identico).
+    if len(palavras) <= 3:
+        return True
+
+    # Contem >= 2 termos clinicos: ja esta boa pra RAG.
+    hits = sum(1 for termo in _TERMOS_CLINICOS_COMUNS if termo in msg_lower)
+    return hits >= 2
+
+
 def reformular_query_clinica(mensagem_usuario: str) -> str:
     """
     Auto-RAG: reformula a mensagem do usuário em linguagem clínica antes da busca.
@@ -71,6 +103,11 @@ def reformular_query_clinica(mensagem_usuario: str) -> str:
     Returns:
         Query reformulada. Se erro, retorna a original.
     """
+    # Skip reformulacao se a query ja tem vocabulario clinico ou e curta
+    # — economiza 1 chamada LLM (~2-3s) sem perda perceptivel de recall.
+    if _query_ja_clinica(mensagem_usuario):
+        return mensagem_usuario
+
     # Import local para evitar circular import
     from src.llm.qwen_client import chat
 

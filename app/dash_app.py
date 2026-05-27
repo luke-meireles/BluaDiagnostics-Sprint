@@ -40,7 +40,10 @@ except Exception as exc:
     print(f"[dash_app] Bootstrap aviso: {exc}")
 
 import dash
-from dash import Dash, html, dcc, callback, Input, Output, State, no_update, ctx
+from dash import (
+    Dash, html, dcc, callback, clientside_callback,
+    Input, Output, State, no_update, ctx,
+)
 import dash_bootstrap_components as dbc
 
 from src.graph import construir_grafo, executar_turno, aprovar_rascunho_prescricao
@@ -385,7 +388,9 @@ def atualizar_card_paciente(beneficiario_id):
 
 @callback(
     Output("session-data", "data"),
-    Output("chat-area", "children"),
+    # chat-area e user-input.value tem allow_duplicate=True porque tambem
+    # sao escritos pelo clientside_callback de Optimistic UI (logo abaixo).
+    Output("chat-area", "children", allow_duplicate=True),
     Output("confidence-display", "children"),
     Output("trajectory-display", "children"),
     Output("intent-display", "children"),
@@ -393,7 +398,7 @@ def atualizar_card_paciente(beneficiario_id):
     Output("tools-display", "children"),
     Output("safety-display", "children"),
     Output("hitl-container", "children"),
-    Output("user-input", "value"),
+    Output("user-input", "value", allow_duplicate=True),
     Output("audio-alert", "autoPlay"),
     Input("btn-enviar", "n_clicks"),
     Input("user-input", "n_submit"),
@@ -552,6 +557,74 @@ def processar_mensagem(n_enviar, n_submit, n_nova, n_aprovar, n_rejeitar,
 
 
 # =============================================================================
+# Optimistic UI — pinta a mensagem do usuario INSTANTANEAMENTE no chat,
+# sem esperar o servidor Python responder. Executa direto no navegador
+# em JavaScript.
+#
+# Fluxo:
+#   1. User clica ENVIAR ou aperta Enter no input
+#   2. Este clientside callback pinta o balao "USER" no chat-area JA
+#   3. Em paralelo, o callback Python principal dispara, processa o
+#      turno (~5-10s), e quando volta substitui o chat-area inteiro com
+#      a versao completa (user msg + assistant msg)
+#
+# A substituicao no passo 3 funciona porque a versao do servidor inclui
+# o mesmo balao do user + o novo balao do assistant — visualmente nao
+# pisca, so adiciona a resposta.
+# =============================================================================
+clientside_callback(
+    """
+    function(n_enviar, n_submit, msg, currentChildren) {
+        if (!msg || !msg.trim()) {
+            return [window.dash_clientside.no_update, window.dash_clientside.no_update];
+        }
+        // Construir o balao de usuario no mesmo formato do chat_bubble Python
+        const bolhaUser = {
+            namespace: 'dash_html_components',
+            type: 'Div',
+            props: {
+                className: 'blua-bubble blua-bubble--user',
+                children: [
+                    {namespace: 'dash_html_components', type: 'Div',
+                     props: {className: 'blua-bubble__role', children: 'USER'}},
+                    {namespace: 'dash_html_components', type: 'Div',
+                     props: {style: {margin: 0, color: 'inherit'}, children: msg}}
+                ]
+            }
+        };
+        // Bolha placeholder "Pensando..." enquanto o servidor processa
+        const bolhaPensando = {
+            namespace: 'dash_html_components',
+            type: 'Div',
+            props: {
+                className: 'blua-bubble blua-bubble--assistant',
+                style: {opacity: 0.6, fontStyle: 'italic'},
+                children: [
+                    {namespace: 'dash_html_components', type: 'Div',
+                     props: {className: 'blua-bubble__role', children: 'BLUA'}},
+                    {namespace: 'dash_html_components', type: 'Div',
+                     props: {style: {margin: 0, color: 'inherit'},
+                             children: 'Analisando seu caso…'}}
+                ]
+            }
+        };
+        const novoChildren = Array.isArray(currentChildren)
+            ? currentChildren.concat([bolhaUser, bolhaPensando])
+            : [bolhaUser, bolhaPensando];
+        return [novoChildren, ''];  // limpa o input
+    }
+    """,
+    Output("chat-area", "children", allow_duplicate=True),
+    Output("user-input", "value", allow_duplicate=True),
+    Input("btn-enviar", "n_clicks"),
+    Input("user-input", "n_submit"),
+    State("user-input", "value"),
+    State("chat-area", "children"),
+    prevent_initial_call=True,
+)
+
+
+# =============================================================================
 # Run
 # =============================================================================
 # Nota: o callback `init_painel_tecnico` foi removido em 2026-05-26. Ele
@@ -559,6 +632,10 @@ def processar_mensagem(n_enviar, n_submit, n_nova, n_aprovar, n_rejeitar,
 # principal (sem flag), o que corrompia o registro de callbacks e gerava
 # KeyError no Dash. Os placeholders "—" sao agora setados diretamente no
 # layout dos panel divs (confidence/trajectory/intent/rag/tools/safety).
+#
+# Optimistic UI (2026-05-26): clientside_callback pinta o balao USER e a
+# bolha "Pensando..." instantaneamente. Callback Python substitui o
+# chat-area completo quando responde — usuario percebe latencia zero.
 
 if __name__ == "__main__":
     print(f"\n[dash_app] Iniciando em http://localhost:8050")

@@ -4,10 +4,24 @@ Consulta o histórico clínico cardiovascular do beneficiário por tipo
 """
 
 import json
+from copy import deepcopy
+from functools import lru_cache
 from pathlib import Path
 
 # Caminho para o mock de perfis clínicos
 _MOCK_PATH = Path(__file__).resolve().parents[2] / "data" / "mocks" / "perfis_clinicos.json"
+
+
+@lru_cache(maxsize=1)
+def _carregar_mock() -> dict:
+    """Carrega o JSON de perfis uma unica vez por processo.
+
+    Pre-Sprint 2 o arquivo era reaberto e reparseado a cada chamada,
+    custando ~50-150ms por turno. Como perfis_clinicos.json e estatico
+    (mock), cachear na memoria do processo e seguro.
+    """
+    with open(_MOCK_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 def consultar_historico_paciente(paciente_id: str, tipo: str) -> dict:
@@ -29,9 +43,8 @@ def consultar_historico_paciente(paciente_id: str, tipo: str) -> dict:
             "tipos_validos": list(tipos_validos)
         }
 
-    # Carregar mock
-    with open(_MOCK_PATH, "r", encoding="utf-8") as f:
-        dados = json.load(f)
+    # Carregar mock (cacheado em memoria — ver _carregar_mock)
+    dados = _carregar_mock()
 
     # Buscar beneficiário
     beneficiario = next(
@@ -41,6 +54,10 @@ def consultar_historico_paciente(paciente_id: str, tipo: str) -> dict:
 
     if not beneficiario:
         return {"erro": f"Beneficiário '{paciente_id}' não encontrado."}
+
+    # deepcopy: o cache devolve referencia compartilhada — se o caller
+    # mutar, corromperia chamadas futuras. Copiar e barato (dict pequeno).
+    beneficiario = deepcopy(beneficiario)
 
     # Mapear tipo para campo do mock
     mapa = {

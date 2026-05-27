@@ -66,8 +66,10 @@ TEMPERATURA_PADRAO = 0.3
 TEMPERATURA_RACIOCINIO = 0.5
 
 # Máximo de tokens por resposta
-MAX_TOKENS_PADRAO = 1024
-MAX_TOKENS_RACIOCINIO = 2048 # thinking = ON gasta mais tokens
+# Reduzido de 1024 para 600 no padrao: respostas medicas tipicas usam
+# 150-400 tokens; 600 da folga e corta ~1-2s de geração em casos longos.
+MAX_TOKENS_PADRAO = 600
+MAX_TOKENS_RACIOCINIO = 1200  # thinking = ON gasta mais tokens (era 2048)
 
 # Cliente OpenAI-compatible — DashScope cloud OU Ollama on-prem
 def _obter_cliente(backend: str = "dashscope") -> OpenAI:
