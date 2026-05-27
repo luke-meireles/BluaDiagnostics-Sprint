@@ -21,9 +21,12 @@ from src.tools import (
 )
 from src.rag import recuperar_contexto_detalhado
 
+# ---- tools spec & system prompt -----------------------------------------
+
 _TOOLS_SPEC_PATH = Path(__file__).resolve().parents[2] / "tools" / "tools_spec.json"
 _TOOLS_SPEC = json.loads(_TOOLS_SPEC_PATH.read_text(encoding="utf-8"))
 
+# Subset orientado a prevenção: histórico, ritmo, wearable e agendamento.
 _TOOLS_CHECKUP = [
     {"type": "function", "function": t}
     for t in _TOOLS_SPEC
@@ -38,7 +41,10 @@ _TOOLS_CHECKUP = [
 SYSTEM_PROMPT_CHECKUP = carregar_prompt("agente_checkup")
 
 
+# ---- tool dispatcher -----------------------------------------------------
+
 def _executar_tool(nome: str, argumentos: dict) -> str:
+    """Executa a tool pedida pelo LLM e devolve resultado serializado em JSON."""
     mapa = {
         "consultar_historico_paciente": consultar_historico_paciente,
         "analisar_ritmo_cardiaco": analisar_ritmo_cardiaco,
@@ -54,11 +60,14 @@ def _executar_tool(nome: str, argumentos: dict) -> str:
         return json.dumps({"erro": str(exc)})
 
 
+# ---- agente principal ---------------------------------------------------
+
 def agente_checkup(
     mensagem: str,
     historico: list[dict],
     beneficiario_id: str = "BENEF-MARIA",
 ) -> dict:
+    """Conduz coleta de FRCV e orientação preventiva. Não prescreve."""
     system = SYSTEM_PROMPT_CHECKUP + f"\n\nBENEFICIÁRIO ATIVO: {beneficiario_id}"
 
     # RAG estruturado — categorias relevantes para check-up
@@ -75,6 +84,7 @@ def agente_checkup(
 
     mensagens = formatar_mensagens(system, historico, mensagem)
 
+    # Thinking OFF: checkup é mais conversacional e prioriza latência.
     resposta = chat(
         messages=mensagens,
         tools=_TOOLS_CHECKUP,
@@ -84,6 +94,7 @@ def agente_checkup(
 
     tools_chamadas = []
 
+    # Loop de tool-calling: LLM pode encadear N tools antes da resposta final.
     while resposta.get("tool_calls"):
         for tc in resposta["tool_calls"]:
             nome = tc["name"]
@@ -92,6 +103,7 @@ def agente_checkup(
             resultado = _executar_tool(nome, argumentos)
             tools_chamadas.append({"tool": nome, "resultado": resultado})
 
+            # Reinjeta a tool call + resultado no histórico pra próxima rodada.
             mensagens.append({
                 "role": "assistant",
                 "content": None,

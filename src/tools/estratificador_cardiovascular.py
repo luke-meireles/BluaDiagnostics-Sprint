@@ -15,6 +15,10 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+# ---- vocabulários clínicos (HEART-like) ---------------------------------
+# Tokens normalizados aceitos como caracteristicas_dor / sintomas_associados
+# / fatores_risco. Não tente "adivinhar" — o LLM tem prompt orientando.
+
 _HISTORIA_ALTA_SUSPEITA = {
     "opressiva", "aperto", "peso", "queimacao_retroesternal",
     "irradiacao_braco_esquerdo", "irradiacao_mandibula",
@@ -43,7 +47,10 @@ _FATORES_RISCO_VALIDOS = {
 _GRUPOS_ATIPICOS = {"mulher", "diabetico", "idoso_65", "neuropata", "ic_previa"}
 
 
+# ---- schema de entrada (validação Pydantic) -----------------------------
+
 class EstratificacaoCVInput(BaseModel):
+    """Valida os argumentos antes da estratificação determinística."""
     caracteristicas_dor: list[str] = Field(default_factory=list)
     sintomas_associados: list[str] = Field(default_factory=list)
     idade: int = Field(..., ge=0, le=120)
@@ -53,6 +60,8 @@ class EstratificacaoCVInput(BaseModel):
     duracao_minutos: int | None = None
     em_esforco: bool = False
 
+
+# ---- componentes do score (H, A, R, S) ----------------------------------
 
 def _pontuar_historia(caracteristicas: list[str], em_esforco: bool) -> int:
     """Componente H do HEART simplificado (0-2)."""
@@ -104,6 +113,8 @@ def _pontuar_sintomas(sintomas: list[str]) -> int:
     return 0
 
 
+# ---- estratificador principal -------------------------------------------
+
 def estratificar_dor_toracica(
     caracteristicas_dor: list[str],
     sintomas_associados: list[str],
@@ -120,6 +131,7 @@ def estratificar_dor_toracica(
     """
     grupos_atipicos = grupos_atipicos or []
 
+    # Pydantic levanta ValueError em entradas inválidas — bom pra audit.
     EstratificacaoCVInput(
         caracteristicas_dor=caracteristicas_dor,
         sintomas_associados=sintomas_associados,
@@ -137,11 +149,14 @@ def estratificar_dor_toracica(
     s = _pontuar_sintomas(sintomas_associados)
     score = h + a + r + s
 
+    # Apresentação atípica: grupo de risco + equivalente anginoso sem dor
+    # típica sobe 1 ponto. Cobre IAM silencioso em diabético/idoso/mulher.
     eh_atipico = any(g in _GRUPOS_ATIPICOS for g in grupos_atipicos)
     tem_equivalente = bool(sintomas_associados) and not caracteristicas_dor
     ajuste_atipico = 1 if (eh_atipico and tem_equivalente) else 0
     score_ajustado = min(score + ajuste_atipico, 8)
 
+    # Cascata de decisão: score ajustado mapeia direto na conduta.
     if score_ajustado >= 5:
         nivel, manchester = "alto", "vermelho"
         conduta = (

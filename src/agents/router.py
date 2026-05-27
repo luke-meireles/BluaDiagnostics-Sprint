@@ -17,11 +17,15 @@ import json
 from src.llm.qwen_client import chat, formatar_mensagens
 from src.prompts import carregar_prompt
 
+# ---- config -------------------------------------------------------------
+
 # System prompt agora vem do arquivo prompts/agente_supervisor.md
 SYSTEM_PROMPT_SUPERVISOR = carregar_prompt("agente_supervisor")
 
 _INTENTS_VALIDAS = {"checkup", "triagem", "suporte", "prescricao", "fora_de_escopo"}
 
+
+# ---- classificação base (sem estado) ------------------------------------
 
 def rotear(mensagem: str, historico: list[dict] | None = None) -> dict:
     """
@@ -71,6 +75,8 @@ def rotear(mensagem: str, historico: list[dict] | None = None) -> dict:
             "motivo": "fallback_erro_parsing",
         }
 
+
+# ---- supervisor com lógica estatal --------------------------------------
 
 def supervisionar(
     mensagem: str,

@@ -19,6 +19,10 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+# ---- vocabulários clínicos ----------------------------------------------
+# Termos normalizados (sem acento, lowercase) — qualquer match dispara
+# a classificação correspondente em _classificar_risco_clinico.
+
 _RED_FLAGS = {
     "dor toracica em esforco", "dor toracica intensa", "sudorese fria",
     "dispneia subita", "falta de ar grave", "perda de consciencia",
@@ -46,14 +50,20 @@ _ALTO_DESCONFORTO = {
 }
 
 
+# ---- schema de entrada (validação Pydantic) -----------------------------
+
 class ClassificacaoInput(BaseModel):
+    """Valida os argumentos antes da classificação determinística."""
     sintomas: list[str] = Field(default_factory=list)
     sinais_vitais: dict[str, float] = Field(default_factory=dict)
     idade: int = Field(..., ge=0, le=120)
     comorbidades: list[str] = Field(default_factory=list)
 
 
+# ---- helpers ------------------------------------------------------------
+
 def _normalizar(texto: str) -> str:
+    """Remove acentos e padroniza lowercase para casamento robusto contra vocabulário."""
     return (
         texto.lower()
         .replace("á", "a").replace("â", "a").replace("ã", "a")
@@ -64,7 +74,7 @@ def _normalizar(texto: str) -> str:
 
 
 def _avaliar_sinais_vitais(sinais: dict[str, float]) -> int:
-    """Pontuação NEWS2-like (0 a 4+)."""
+    """Pontuação NEWS2-like (0 a 4+) somando alterações em FC, SpO2, PA, T° e FR."""
     score = 0
     fc = sinais.get("fc")
     if fc is not None and (fc < 40 or fc > 130):
@@ -88,13 +98,16 @@ def _avaliar_sinais_vitais(sinais: dict[str, float]) -> int:
     return score
 
 
+# ---- classificador principal --------------------------------------------
+
 def classificar_risco_clinico(
     sintomas: list[str],
     sinais_vitais: dict[str, float],
     idade: int,
     comorbidades: list[str],
 ) -> dict[str, Any]:
-    """Classifica o risco com lógica simples e auditável."""
+    """Classifica o risco com lógica simples e auditável (Manchester simplificado)."""
+    # Pydantic levanta ValueError em entradas inválidas — bom pra audit.
     ClassificacaoInput(
         sintomas=sintomas, sinais_vitais=sinais_vitais,
         idade=idade, comorbidades=comorbidades,
@@ -104,9 +117,11 @@ def classificar_risco_clinico(
     red_flag = any(any(rf in s for rf in _RED_FLAGS) for s in sintomas_norm)
     alto_desc = any(any(a in s for a in _ALTO_DESCONFORTO) for s in sintomas_norm)
     score_vitais = _avaliar_sinais_vitais(sinais_vitais)
+    # Idosos e polipatológicos sobem 1 nível em quadros borderline.
     fator_idade = 1 if idade >= 65 else 0
     fator_comorb = 1 if len(comorbidades) >= 2 else 0
 
+    # Cascata de decisão: do mais grave (vermelho) ao mais leve (azul).
     if red_flag or score_vitais >= 4:
         nivel, manchester = "critico", "vermelho"
         tempo = "atendimento imediato — acionar SAMU 192 ou ir ao pronto-socorro mais próximo"

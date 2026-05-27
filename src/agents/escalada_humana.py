@@ -16,6 +16,10 @@ garantir consistência e latência mínima em emergências.
 from __future__ import annotations
 
 
+# ---- templates determinísticos ------------------------------------------
+# Respostas hard-coded em vez de chamada LLM: garante consistência clínica
+# e latência mínima (~0ms) em emergências reais.
+
 _RESPOSTA_SAMU = (
     "🚨 **Os sintomas que você descreveu podem indicar uma situação clínica crítica.**\n\n"
     "**Ligue IMEDIATAMENTE para o SAMU — 192**\n\n"
@@ -43,6 +47,8 @@ _RESPOSTA_AVC = (
     "⚕️ *Em suspeita de AVC, cada minuto custa neurônios. Ligue 192 agora.*"
 )
 
+
+# ---- nó de escalada ------------------------------------------------------
 
 def agente_escalada_humana(
     mensagem: str,

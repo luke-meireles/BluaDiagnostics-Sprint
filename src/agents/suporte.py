@@ -17,9 +17,12 @@ from src.tools import (
 )
 from src.rag import recuperar_contexto_detalhado
 
+# ---- tools spec & system prompt -----------------------------------------
+
 _TOOLS_SPEC_PATH = Path(__file__).resolve().parents[2] / "tools" / "tools_spec.json"
 _TOOLS_SPEC = json.loads(_TOOLS_SPEC_PATH.read_text(encoding="utf-8"))
 
+# Suporte clínico foca em dúvida medicamentosa, interações e agendamento.
 _TOOLS_SUPORTE = [
     {"type": "function", "function": t}
     for t in _TOOLS_SPEC
@@ -33,7 +36,10 @@ _TOOLS_SUPORTE = [
 SYSTEM_PROMPT_SUPORTE = carregar_prompt("agente_suporte_clinico")
 
 
+# ---- tool dispatcher -----------------------------------------------------
+
 def _executar_tool(nome: str, argumentos: dict) -> str:
+    """Executa a tool pedida pelo LLM e devolve resultado serializado em JSON."""
     mapa = {
         "consultar_historico_paciente": consultar_historico_paciente,
         "verificar_interacoes_medicamentosas": verificar_interacoes_medicamentosas,
@@ -48,13 +54,17 @@ def _executar_tool(nome: str, argumentos: dict) -> str:
         return json.dumps({"erro": str(exc)})
 
 
+# ---- agente principal ---------------------------------------------------
+
 def agente_suporte_clinico(
     mensagem: str,
     historico: list[dict],
     beneficiario_id: str = "BENEF-MARIA",
 ) -> dict:
+    """Responde dúvidas sobre medicação ativa, interações e agendamentos."""
     system = SYSTEM_PROMPT_SUPORTE + f"\n\nBENEFICIÁRIO ATIVO: {beneficiario_id}"
 
+    # RAG focado em informação farmacológica + protocolos Care Plus.
     contexto_rag, documentos_rag = recuperar_contexto_detalhado(
         query=mensagem,
         n_resultados=3,
@@ -68,6 +78,7 @@ def agente_suporte_clinico(
 
     mensagens = formatar_mensagens(system, historico, mensagem)
 
+    # Thinking ON + temperatura de raciocínio: orientações exigem reflexão.
     resposta = chat(
         messages=mensagens,
         tools=_TOOLS_SUPORTE,
@@ -77,6 +88,7 @@ def agente_suporte_clinico(
 
     tools_chamadas = []
 
+    # Loop de tool-calling: LLM pode encadear N tools antes da resposta final.
     while resposta.get("tool_calls"):
         for tc in resposta["tool_calls"]:
             nome = tc["name"]
@@ -85,6 +97,7 @@ def agente_suporte_clinico(
             resultado = _executar_tool(nome, argumentos)
             tools_chamadas.append({"tool": nome, "resultado": resultado})
 
+            # Reinjeta a tool call + resultado no histórico pra próxima rodada.
             mensagens.append({
                 "role": "assistant",
                 "content": None,
