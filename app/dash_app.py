@@ -291,25 +291,47 @@ app.layout = html.Div([
                         html.Button("ENVIAR", id="btn-enviar",
                                     className="hud-btn"),
                     ], className="blua-input-row"),
-                    html.Div(id="hitl-container"),
+                    # hitl-container: placeholders ocultos garantem que
+                    # btn-hitl-aprovar e btn-hitl-rejeitar SEMPRE existam no
+                    # DOM (sao Input do callback principal). Sem eles, o
+                    # frontend manda os Inputs incompletos e o backend lanca
+                    # IndexError no _prepare_grouping.
+                    html.Div(id="hitl-container", children=[
+                        html.Button("", id="btn-hitl-aprovar",
+                                    style={"display": "none"}),
+                        html.Button("", id="btn-hitl-rejeitar",
+                                    style={"display": "none"}),
+                    ]),
                 ], status="ONLINE"),
             ], style={"gridColumn": "span 6"}),
 
             # Coluna direita — Painel técnico
             html.Div([
-                hud_panel("CONFIDENCE", html.Div(id="confidence-display"),
+                hud_panel("CONFIDENCE", html.Div("—",
+                                                  id="confidence-display",
+                                                  style={"color": "var(--hud-muted)"}),
                           status="REAL-TIME"),
-                hud_panel("TRAJETÓRIA LANGGRAPH", html.Div(id="trajectory-display"),
+                hud_panel("TRAJETÓRIA LANGGRAPH", html.Div("—",
+                                                            id="trajectory-display",
+                                                            style={"color": "var(--hud-muted)"}),
                           status="REAL-TIME"),
-                hud_panel("INTENT", html.Div(id="intent-display",
+                hud_panel("INTENT", html.Div("—",
+                                              id="intent-display",
                                               style={"fontFamily": "'JetBrains Mono', monospace",
-                                                     "fontSize": "0.86rem"}),
+                                                     "fontSize": "0.86rem",
+                                                     "color": "var(--hud-muted)"}),
                           status="SUPERVISOR"),
-                hud_panel("RAG · DOCUMENTOS", html.Div(id="rag-display"),
+                hud_panel("RAG · DOCUMENTOS", html.Div("—",
+                                                        id="rag-display",
+                                                        style={"color": "var(--hud-muted)"}),
                           status="CHROMADB"),
-                hud_panel("TOOLS CHAMADAS", html.Div(id="tools-display"),
+                hud_panel("TOOLS CHAMADAS", html.Div("—",
+                                                      id="tools-display",
+                                                      style={"color": "var(--hud-muted)"}),
                           status="FUNCTION"),
-                hud_panel("SAFETY", html.Div(id="safety-display"),
+                hud_panel("SAFETY", html.Div("—",
+                                              id="safety-display",
+                                              style={"color": "var(--hud-muted)"}),
                           status="DUAL-LAYER"),
             ], style={"gridColumn": "span 3"}),
 
@@ -330,6 +352,20 @@ app.layout = html.Div([
 # =============================================================================
 # Callbacks
 # =============================================================================
+
+def _hitl_placeholders():
+    """Botoes HITL ocultos — usado quando nao ha rascunho pendente.
+
+    Importante: btn-hitl-aprovar e btn-hitl-rejeitar sao Input do callback
+    principal. Eles PRECISAM existir no DOM mesmo quando nao ha HITL ativo,
+    senao o frontend manda os Inputs incompletos e Dash falha com
+    IndexError no _prepare_grouping.
+    """
+    return [
+        html.Button("", id="btn-hitl-aprovar", style={"display": "none"}),
+        html.Button("", id="btn-hitl-rejeitar", style={"display": "none"}),
+    ]
+
 
 @callback(
     Output("patient-card-container", "children"),
@@ -376,7 +412,8 @@ def processar_mensagem(n_enviar, n_submit, n_nova, n_aprovar, n_rejeitar,
         return (nova_sessao,
                 [html.Div("Nova sessão iniciada.", className="hud-info",
                            style={"alignSelf": "center"})],
-                "—", "—", "—", "—", "—", "—", None, "", False)
+                "—", "—", "—", "—", "—", "—",
+                _hitl_placeholders(), "", False)
 
     # B6 — HITL: aprovação/rejeição do rascunho de prescrição
     if trig in ("btn-hitl-aprovar", "btn-hitl-rejeitar"):
@@ -488,8 +525,8 @@ def processar_mensagem(n_enviar, n_submit, n_nova, n_aprovar, n_rejeitar,
     else:
         safety_view = html.Span("APROVADO", className="hud-chip hud-chip--ok")
 
-    # HITL — só aparece se requer_aprovacao_humana
-    hitl_view = None
+    # HITL — botoes sempre presentes no DOM (Input do callback), apenas
+    # mudam de visiveis (com label) para ocultos conforme requer_aprovacao_humana.
     if ult["requer_aprovacao_humana"]:
         hitl_view = html.Div([
             html.Span("🩺 Rascunho aguardando aprovação médica",
@@ -498,6 +535,8 @@ def processar_mensagem(n_enviar, n_submit, n_nova, n_aprovar, n_rejeitar,
             html.Button("REJEITAR", className="hud-btn hud-btn--ghost",
                         id="btn-hitl-rejeitar"),
         ], className="blua-hitl")
+    else:
+        hitl_view = _hitl_placeholders()
 
     return (sessao, chat_children, confidence_view, trajectory_view,
             intent_view, rag_view, tools_view, safety_view, hitl_view,
@@ -505,27 +544,13 @@ def processar_mensagem(n_enviar, n_submit, n_nova, n_aprovar, n_rejeitar,
 
 
 # =============================================================================
-# Inicialização inicial dos painéis técnicos
-# =============================================================================
-
-@callback(
-    Output("confidence-display", "children", allow_duplicate=True),
-    Output("trajectory-display", "children", allow_duplicate=True),
-    Output("intent-display", "children", allow_duplicate=True),
-    Output("rag-display", "children", allow_duplicate=True),
-    Output("tools-display", "children", allow_duplicate=True),
-    Output("safety-display", "children", allow_duplicate=True),
-    Input("session-data", "data"),
-    prevent_initial_call="initial_duplicate",
-)
-def init_painel_tecnico(sessao):
-    placeholder = html.Span("—", style={"color": "var(--hud-muted)"})
-    return placeholder, placeholder, placeholder, placeholder, placeholder, placeholder
-
-
-# =============================================================================
 # Run
 # =============================================================================
+# Nota: o callback `init_painel_tecnico` foi removido em 2026-05-26. Ele
+# declarava outputs com `allow_duplicate=True` conflitando com o callback
+# principal (sem flag), o que corrompia o registro de callbacks e gerava
+# KeyError no Dash. Os placeholders "—" sao agora setados diretamente no
+# layout dos panel divs (confidence/trajectory/intent/rag/tools/safety).
 
 if __name__ == "__main__":
     print(f"\n[dash_app] Iniciando em http://localhost:8050")
