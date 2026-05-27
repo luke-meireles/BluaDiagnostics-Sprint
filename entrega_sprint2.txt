@@ -13,7 +13,7 @@ INTEGRANTES:
 - Lucas Koiti Uyeno de Souza             RM 568128
 - Lucas Morio Ikeda                      RM 567616
 
-REPOSITÓRIO GITHUB: https://github.com/luke-meireles/Prototype
+REPOSITÓRIO GITHUB: https://github.com/luke-meireles/BluaDiagnostics-Sprint/tree/sprint2
 VÍDEO YOUTUBE (não listado): [PREENCHER URL]
 RELATÓRIO TÉCNICO: docs/relatorio_final.md
 
