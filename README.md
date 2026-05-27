@@ -73,7 +73,7 @@ pip install -r requirements.txt
 # 2. Configurar
 cp .env.example .env
 # Editar .env: DASHSCOPE_API_KEY=sk-xxx
-# (UTF-8 sem BOM — colab_setup.py remove BOM automaticamente se houver)
+# (UTF-8 sem BOM — _setup.py remove BOM automaticamente se houver)
 
 # 3. Popular ChromaDB (uma vez, ~132 chunks de 12 documentos)
 bash scripts/index_kb.sh
@@ -232,17 +232,17 @@ Para narrativa LGPD em produção, considerar **LangFuse self-hosted** no mesmo 
 
 ## Demonstração
 
-Vídeo (5 min): **[link YouTube unlisted]**
+Vídeo (): **[]**
 
 Roteiro:
-- 0:00–0:30 — Arquitetura
-- 0:30–1:30 — Happy path Maria (paciente canônica do enunciado)
-- 1:30–2:15 — Red flag → escalada SAMU automática
-- 2:15–3:00 — Prescrição com HITL síncrono (rascunho gerado → médico aprova/rejeita → grafo retoma)
-- 3:00–3:30 — Jailbreak duplo (regex óbvio + LLM-as-validator em padrão ambíguo)
-- 3:30–4:00 — Traces LangSmith
-- 4:00–4:45 — **Troca para Ollama on-prem ao vivo** (narrativa LGPD)
-- 4:45–5:00 — Métricas finais
+- 
+-
+- 
+- 
+- 
+- 
+- 
+- 
 
 ---
 
@@ -262,7 +262,7 @@ Roteiro:
 
 O modelo de ML real de detecção de arritmias do grupo (de outra disciplina) **não está integrado** nesta entrega — fica como roadmap. A tool `analisar_ritmo_cardiaco` atual usa regra determinística mockada.
 
-O backend Ollama on-prem é funcional mas exige `ollama serve` + `ollama pull qwen:9b` em máquina local — não é testável no Colab gratuito (que é o ambiente da demo). A troca de modo é demonstrável em vídeo de máquina local.
+O backend Ollama on-prem é funcional mas exige `ollama serve` + `ollama pull qwen:9b` em máquina local. A troca de modo é demonstrável em vídeo de máquina local.
 
 A camada `LLM-as-validator` do pre-safety adiciona ~500ms em mensagens com padrão ambíguo de jailbreak (~5% do tráfego). Latência aceitável dado o ganho de cobertura sobre jailbreaks sofisticados.
 
