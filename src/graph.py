@@ -484,7 +484,48 @@ def construir_grafo() -> StateGraph:
     print("[graph] 10 nós: pre_safety, supervisor, checkup, triagem, suporte, "
           "prescricao, escalada_humana, fora_escopo, safety, saida")
     print("[graph] HITL síncrono: pausa após 'prescricao' (CFM 2.314/22).")
+
+    # Warm-up: forçar o carregamento dos modelos pesados (embeddings 2GB +
+    # cross-encoder ~50MB) AGORA, durante o startup, em vez de na primeira
+    # mensagem do usuario. Custa ~60s aqui, mas a UI fica fluida desde
+    # o primeiro clique.
+    _aquecer_modelos_rag()
+
     return grafo
+
+
+def _aquecer_modelos_rag() -> None:
+    """Carrega embeddings + cross-encoder antes do primeiro turno.
+
+    Sem isto, a primeira mensagem do usuario espera ~60s pelo modelo de
+    embeddings (multilingual-e5-large, 2GB) carregar do disco pra RAM.
+    Com isto, o custo migra pro startup do servidor.
+    """
+    import time
+    inicio = time.perf_counter()
+    print("[graph] Aquecendo modelos RAG (embeddings + reranker)...")
+    try:
+        from src.rag.retriever import recuperar_contexto
+        # Query dummy: forca _obter_colecao() a instanciar a embedding fn
+        # e o ChromaDB a executar uma busca real (que carrega o modelo).
+        _ = recuperar_contexto("aquecimento inicial", n_resultados=1)
+
+        # Reranker (cross-encoder ms-marco-MiniLM) — usado em triagem.
+        # Tambem pesa carregar na primeira chamada.
+        from src.rag.reranker import rerank_cross_encoder
+        _ = rerank_cross_encoder(
+            "aquecimento",
+            [{"chunk": "teste warm-up reranker", "fonte": "warmup",
+              "score_similaridade": 0.5}]
+        )
+        dt = time.perf_counter() - inicio
+        print(f"[graph] Modelos RAG aquecidos em {dt:.1f}s. "
+              "Primeira mensagem agora vai fluir.")
+    except Exception as exc:
+        # Warm-up nunca pode quebrar o startup — se falhar, a primeira
+        # mensagem so vai ser lenta como antes.
+        print(f"[graph] Warm-up falhou ({type(exc).__name__}: {exc}); "
+              "primeira mensagem pode ficar lenta.")
 
 
 # =============================================================================

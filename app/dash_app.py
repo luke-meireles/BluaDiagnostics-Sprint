@@ -275,14 +275,22 @@ app.layout = html.Div([
             # Coluna central — Chat
             html.Div([
                 hud_panel("DIÁLOGO CLÍNICO", [
-                    html.Div(id="chat-area", className="blua-chat-area",
-                             children=[
-                                 html.Div("Olá! Sou o BluaDiagnostics. "
-                                          "Pode me contar como está se sentindo "
-                                          "ou pedir informações sobre seu acompanhamento cardiovascular.",
-                                          className="hud-info",
-                                          style={"alignSelf": "center"})
-                             ]),
+                    # dcc.Loading exibe um spinner sobre a chat-area enquanto
+                    # o callback principal estiver em andamento — feedback
+                    # visual instantaneo no clique de ENVIAR.
+                    dcc.Loading(
+                        id="chat-loading",
+                        type="circle",
+                        color="var(--hud-blue-dark, #007AB8)",
+                        children=html.Div(id="chat-area", className="blua-chat-area",
+                                 children=[
+                                     html.Div("Olá! Sou o BluaDiagnostics. "
+                                              "Pode me contar como está se sentindo "
+                                              "ou pedir informações sobre seu acompanhamento cardiovascular.",
+                                              className="hud-info",
+                                              style={"alignSelf": "center"})
+                                 ]),
+                    ),
                     html.Div([
                         dcc.Input(id="user-input", type="text",
                                   placeholder="Digite sua mensagem…",
